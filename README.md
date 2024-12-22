@@ -3,7 +3,7 @@
 ⬆️ (Replace above with your app's name)
 ```
 
-Solar Power Simulator Application
+Water Quality Testing Application
 
 ## Demo App
 
