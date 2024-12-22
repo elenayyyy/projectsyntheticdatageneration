@@ -213,7 +213,10 @@ if "model_metrics" in st.session_state:
 
     # Create a BytesIO stream for the ExtraTreesClassifier model
     model_io = io.BytesIO()
-    joblib.dump(clf, model_io)  # Serialize the model to the BytesIO object
+    # Ensure the ExtraTreesClassifier is trained and assigned to clf
+    clf = models["ExtraTreesClassifier"]
+    joblib.dump(clf, model_io)  # Serialize the ExtraTreesClassifier to the BytesIO object
+
     model_io.seek(0)  # Rewind the BytesIO object to the beginning so it can be read
 
     # Provide the download button for the ExtraTreesClassifier model
