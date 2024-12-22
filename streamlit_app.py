@@ -22,20 +22,12 @@ st.title("Water Quality Testing Model and Simulation")
 st.sidebar.header("Data Source")
 data_source = st.sidebar.radio("Choose Data Source:", ["Generate Synthetic Data", "Upload Dataset"])
 
-# Initialize session state variables if not already present
-if "data" not in st.session_state:
-    st.session_state["data"] = None
-if "model_metrics" not in st.session_state:
-    st.session_state["model_metrics"] = None
-if "trained_models" not in st.session_state:
-    st.session_state["trained_models"] = {}
-
 if data_source == "Upload Dataset":
     uploaded_file = st.sidebar.file_uploader("Upload your CSV file:", type="csv")
     if uploaded_file is not None:
-        st.session_state["data"] = pd.read_csv(uploaded_file)
+        data = pd.read_csv(uploaded_file)
         st.write("### Uploaded Dataset:")
-        st.dataframe(st.session_state["data"].head())
+        st.dataframe(data.head())
 else:
     st.sidebar.subheader("Synthetic Data Generation")
     feature_names = st.sidebar.text_input("Enter Feature Names (comma-separated):", "Soil_Type,Sunlight_Hours,Water_Frequency,Fertilizer_Type,Temperature,Humidity")
@@ -63,8 +55,8 @@ else:
             synthetic_data.append([np.random.normal(class_settings[cls][f][0], class_settings[cls][f][1]) for f in features])
             synthetic_labels.append(cls)
 
-    st.session_state["data"] = pd.DataFrame(synthetic_data, columns=features)
-    st.session_state["data"]['Class'] = synthetic_labels
+    data = pd.DataFrame(synthetic_data, columns=features)
+    data['Class'] = synthetic_labels
 
 st.sidebar.header("Sample Size & Train/Test Split Configuration")
 test_size = st.sidebar.slider("Test Size (%)", min_value=10, max_value=50, value=30) / 100.0
@@ -75,15 +67,15 @@ st.sidebar.write(f"Test: {test_size * 100}% / Train: {train_size * 100}%")
 start_training = st.sidebar.button("Generate Data and Train Models")
 
 if start_training:
-    if st.session_state["data"] is None:
+    if data.empty:
         st.warning("Please upload or generate data before training models.")
     else:
-        data = st.session_state["data"]
         X = data[features]
         y = data['Class']
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(X)
 
+        scaler = MinMaxScaler()
         X_scaled = scaler.fit_transform(X)
 
         X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=test_size, random_state=42)
@@ -107,6 +99,8 @@ if start_training:
             model.fit(X_train, y_train)
             training_time = time() - start_time
 
+            if "trained_models" not in st.session_state:
+                st.session_state["trained_models"] = {}
             st.session_state["trained_models"][model_name] = model
 
             y_pred = model.predict(X_test)
@@ -138,7 +132,7 @@ if start_training:
         st.dataframe(data.head())
         st.dataframe(pd.DataFrame(X_scaled[:5], columns=features))
 
-if "model_metrics" in st.session_state:
+if "model_metrics" in st.session_state and st.session_state["model_metrics"] is not None:
     st.write("### Performance Metrics Summary")
     selected_models = st.multiselect("Select models to compare", list(st.session_state["model_metrics"].keys()))
 
@@ -155,9 +149,11 @@ if "model_metrics" in st.session_state:
         metrics_df = pd.DataFrame(metrics_data)
         metrics_df.set_index('Model', inplace=True)
         st.bar_chart(metrics_df)
+else:
+    st.warning("No model metrics available. Please generate and train models first.")
 
 # Learning Curves
-if "trained_models" in st.session_state and 'X_train' in locals():
+if "trained_models" in st.session_state:
     st.write("### Learning Curves")
     for model_name, model in st.session_state["trained_models"].items():
         # Plotting learning curves
@@ -188,17 +184,3 @@ if "trained_models" in st.session_state:
         ax.set_xlabel('Predicted')
         ax.set_ylabel('Actual')
         st.pyplot(fig)
-
-# Display saved models
-if "trained_models" in st.session_state:
-    st.write("### Saved Models")
-    saved_models = []
-    for model_name, model in st.session_state["trained_models"].items():
-        accuracy = st.session_state["model_metrics"][model_name]["Accuracy"]
-        saved_models.append([model_name, accuracy])
-    saved_models_df = pd.DataFrame(saved_models, columns=["Model", "Accuracy"])
-    st.dataframe(saved_models_df)
-
-    # Download models in CSV format
-    csv = saved_models_df.to_csv(index=False)
-    st.download_button("Download Models as CSV", data=csv, file_name="saved_models.csv", mime="text/csv")
