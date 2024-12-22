@@ -7,5 +7,5 @@ st.title('🍪ML Generation')
 
 st.write("""Machine Learning Project""")
 
-df = pd.read_csv('https://raw.githubusercontent.com/elenayyyy/dataset/refs/heads/main/food_ingredients_and_allergens.csv')
+df = pd.read_csv('https://raw.githubusercontent.com/elenayyyy/data/refs/heads/master/food_ingredients_and_allergens.csv')
 df
