@@ -218,7 +218,6 @@ if start_training:
     st.write("**Model Performance Metrics Comparison**")
     st.bar_chart(metrics_df)
 
-WHY IS THIS PART NOT DISPLAYING ANYTHING?
 
     # Display saved models
     if "trained_models" in st.session_state:
