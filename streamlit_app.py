@@ -150,23 +150,41 @@ if "model_metrics" in st.session_state:
         metrics_df.set_index('Model', inplace=True)
         st.bar_chart(metrics_df)
 
+# Display saved models
 if "trained_models" in st.session_state:
-    st.write("### Save and Download Trained Models")
-    model_name = st.selectbox("Choose a model to save:", list(st.session_state["trained_models"].keys()))
+    st.write("### Saved Models")
+    saved_models = []
+    for model_name, model in st.session_state["trained_models"].items():
+        accuracy = st.session_state["model_metrics"][model_name]["Accuracy"]
+        saved_models.append([model_name, accuracy])
+    saved_models_df = pd.DataFrame(saved_models, columns=["Model", "Accuracy"])
+    st.dataframe(saved_models_df)
 
-    if st.button("Save Selected Model"):
-        selected_model = st.session_state["trained_models"][model_name]
-        model_io = io.BytesIO()
-        joblib.dump(selected_model, model_io)
-        model_io.seek(0)
+    # Download models in CSV format
+    csv = saved_models_df.to_csv(index=False)
+    st.download_button("Download Models as CSV", data=csv, file_name="saved_models.csv", mime="text/csv")
 
-        st.download_button(
-            label=f"Download {model_name} Model",
-            data=model_io,
-            file_name=f"{model_name}.pkl",
-            mime="application/octet-stream"
-        )
+# Learning Curves
+if "trained_models" in st.session_state:
+    st.write("### Learning Curves")
+    for model_name, model in st.session_state["trained_models"].items():
+        # Plotting learning curves
+        train_scores, valid_scores = [], []
+        for i in range(1, len(X_train) + 1, 50):
+            model.fit(X_train[:i], y_train[:i])
+            train_scores.append(accuracy_score(y_train[:i], model.predict(X_train[:i])))
+            valid_scores.append(accuracy_score(y_test, model.predict(X_test)))
+        
+        plt.plot(range(50, len(X_train) + 1, 50), train_scores, label='Training Score', color='blue')
+        plt.plot(range(50, len(X_train) + 1, 50), valid_scores, label='Validation Score', color='orange')
+        plt.fill_between(range(50, len(X_train) + 1, 50), np.array(valid_scores) - np.std(valid_scores), np.array(valid_scores) + np.std(valid_scores), alpha=0.2, color='orange')
+        plt.title(f"Learning Curve for {model_name}")
+        plt.xlabel("Number of Training Samples")
+        plt.ylabel("Accuracy")
+        plt.legend()
+        st.pyplot()
 
+# Confusion Matrices
 st.write("### Confusion Matrices")
 if "trained_models" in st.session_state:
     for model_name, model in st.session_state["trained_models"].items():
@@ -178,31 +196,3 @@ if "trained_models" in st.session_state:
         ax.set_xlabel('Predicted')
         ax.set_ylabel('Actual')
         st.pyplot(fig)
-
-# "Saved Models" Table
-if "trained_models" in st.session_state:
-    st.write("### Saved Models")
-    saved_models_data = []
-    for model_name, model in st.session_state["trained_models"].items():
-        accuracy = st.session_state["model_metrics"].get(model_name, {}).get("Accuracy", "N/A")
-        saved_models_data.append({"Model": model_name, "Accuracy": accuracy})
-
-    saved_models_df = pd.DataFrame(saved_models_data)
-    st.dataframe(saved_models_df)
-
-# "Download Models" CSV
-if "trained_models" in st.session_state:
-    st.write("### Download Models CSV")
-    download_data = []
-    for model_name, model in st.session_state["trained_models"].items():
-        accuracy = st.session_state["model_metrics"].get(model_name, {}).get("Accuracy", "N/A")
-        download_data.append({"Model": model_name, "Accuracy": accuracy})
-
-    download_df = pd.DataFrame(download_data)
-    csv = download_df.to_csv(index=False)
-    st.download_button(
-        label="Download Models CSV",
-        data=csv,
-        file_name="models.csv",
-        mime="text/csv"
-    )
