@@ -173,8 +173,36 @@ if "trained_models" in st.session_state:
         y_pred = model.predict(X_test)
         cm = confusion_matrix(y_test, y_pred)
         fig, ax = plt.subplots()
-        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=ax)
+        sns.heatmap(cm, annot=True, fmt='d', cmap='viridis', ax=ax)
         ax.set_title(f"Confusion Matrix for {model_name}")
         ax.set_xlabel('Predicted')
         ax.set_ylabel('Actual')
         st.pyplot(fig)
+
+# "Saved Models" Table
+if "trained_models" in st.session_state:
+    st.write("### Saved Models")
+    saved_models_data = []
+    for model_name, model in st.session_state["trained_models"].items():
+        accuracy = st.session_state["model_metrics"].get(model_name, {}).get("Accuracy", "N/A")
+        saved_models_data.append({"Model": model_name, "Accuracy": accuracy})
+
+    saved_models_df = pd.DataFrame(saved_models_data)
+    st.dataframe(saved_models_df)
+
+# "Download Models" CSV
+if "trained_models" in st.session_state:
+    st.write("### Download Models CSV")
+    download_data = []
+    for model_name, model in st.session_state["trained_models"].items():
+        accuracy = st.session_state["model_metrics"].get(model_name, {}).get("Accuracy", "N/A")
+        download_data.append({"Model": model_name, "Accuracy": accuracy})
+
+    download_df = pd.DataFrame(download_data)
+    csv = download_df.to_csv(index=False)
+    st.download_button(
+        label="Download Models CSV",
+        data=csv,
+        file_name="models.csv",
+        mime="text/csv"
+    )
