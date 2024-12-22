@@ -1,131 +1,118 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.svm import SVC
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 import seaborn as sns
+import joblib
 
-# Synthetic Data Generation Function
-def generate_synthetic_data(sample_size):
-    # Generating synthetic features
-    np.random.seed(42)
-    soil_type = np.random.choice(['Loamy', 'Sandy', 'Clay'], size=sample_size)
-    sunlight_hours = np.random.normal(loc=8, scale=1, size=sample_size)
-    water_frequency = np.random.normal(loc=5, scale=2, size=sample_size)
-    temperature = np.random.normal(loc=25, scale=2, size=sample_size)
-    humidity = np.random.normal(loc=75, scale=5, size=sample_size)
-    
-    # Generating synthetic growth milestones (as target labels)
-    growth_milestone = np.random.choice([0.0, 0.1, 0.8], size=sample_size)  # 0.0 = Seedling, 0.1 = Early Growth, 0.8 = Mature Plant
-    
-    # Creating DataFrame
-    data = pd.DataFrame({
-        'Soil_Type': soil_type,
-        'Sunlight_Hours': sunlight_hours,
-        'Water_Frequency': water_frequency,
-        'Temperature': temperature,
-        'Humidity': humidity,
-        'Growth_Milestone': growth_milestone
-    })
-    
-    return data
-
-# Load and preprocess the data
-def preprocess_data(data):
-    # Convert categorical feature 'Soil_Type' into numeric values
-    data['Soil_Type'] = data['Soil_Type'].map({'Loamy': 1, 'Sandy': 2, 'Clay': 3})
-    
-    # Features and target variable
-    X = data.drop('Growth_Milestone', axis=1)
-    y = data['Growth_Milestone']
-    
-    # Split data into train and test sets
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
-    
-    # Standardize the data
-    scaler = StandardScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
-    
-    return X_train_scaled, X_test_scaled, y_train, y_test, scaler
-
-# Train the model
-def train_model(X_train, y_train):
-    # Train a Random Forest Classifier
-    model = RandomForestClassifier(n_estimators=100, random_state=42)
-    model.fit(X_train, y_train)
-    
-    return model
-
-# Evaluate the model
-def evaluate_model(model, X_test, y_test):
-    y_pred = model.predict(X_test)
-    accuracy = accuracy_score(y_test, y_pred)
-    report = classification_report(y_test, y_pred)
-    cm = confusion_matrix(y_test, y_pred)
-    
-    return accuracy, report, cm
-
-# Visualize Confusion Matrix
-def plot_confusion_matrix(cm):
-    plt.figure(figsize=(8,6))
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=['Seedling', 'Early Growth', 'Mature Plant'], yticklabels=['Seedling', 'Early Growth', 'Mature Plant'])
-    plt.ylabel('Actual')
-    plt.xlabel('Predicted')
-    st.pyplot()
-
-# Streamlit App UI
+# App Title
 st.title("Water Quality Testing - Plant Growth Milestone Prediction")
 
-# Sidebar Configuration
+# Sidebar for Data Upload
 st.sidebar.header("Data Source")
-data_source = st.sidebar.selectbox("Choose Data Source", ["Generate Synthetic Data", "Upload Dataset"])
+data_source = st.sidebar.radio("Choose Data Source:", ["Upload Dataset"])
 
-if data_source == "Generate Synthetic Data":
-    sample_size = st.sidebar.slider("Number of samples", 1000, 10000, 5000)
-    data = generate_synthetic_data(sample_size)
-    st.write(f"Generated Synthetic Data Sample ({sample_size} samples):")
-    st.dataframe(data.head())
-
-    # Model Training and Evaluation
-    if st.sidebar.button("Train Model"):
-        X_train, X_test, y_train, y_test, scaler = preprocess_data(data)
-        model = train_model(X_train, y_train)
-        accuracy, report, cm = evaluate_model(model, X_test, y_test)
-        
-        st.write(f"Model Accuracy: {accuracy:.4f}")
-        st.text("Classification Report:")
-        st.text(report)
-        
-        st.write("Confusion Matrix:")
-        plot_confusion_matrix(cm)
-
-elif data_source == "Upload Dataset":
-    uploaded_file = st.sidebar.file_uploader("Upload your CSV file", type=["csv"])
+if data_source == "Upload Dataset":
+    uploaded_file = st.sidebar.file_uploader("Upload your CSV file:", type="csv")
     if uploaded_file is not None:
         data = pd.read_csv(uploaded_file)
-        st.write("Uploaded Data Sample:")
+        st.write("### Uploaded Dataset:")
         st.dataframe(data.head())
 
-        # Preprocessing and Model Training
-        if st.sidebar.button("Train Model"):
-            X_train, X_test, y_train, y_test, scaler = preprocess_data(data)
-            model = train_model(X_train, y_train)
-            accuracy, report, cm = evaluate_model(model, X_test, y_test)
-            
-            st.write(f"Model Accuracy: {accuracy:.4f}")
-            st.text("Classification Report:")
-            st.text(report)
-            
-            st.write("Confusion Matrix:")
-            plot_confusion_matrix(cm)
+        # Train-Test Split Configuration
+        st.sidebar.header("Train-Test Split Configuration")
+        test_size = st.sidebar.slider("Test Size (%)", min_value=10, max_value=50, value=30) / 100.0
 
-# Learning Curves (Optional, if desired)
-st.sidebar.header("Learning Curves")
-# If you have learning curves logic, you can include the code here to plot the learning curves.
+        # Ensure data has necessary columns (Soil_Type, Sunlight_Hours, Water_Frequency, Temperature, Humidity, Growth_Milestone)
+        if all(col in data.columns for col in ['Soil_Type', 'Sunlight_Hours', 'Water_Frequency', 'Temperature', 'Humidity', 'Growth_Milestone']):
+            # Preprocessing
+            features = ['Soil_Type', 'Sunlight_Hours', 'Water_Frequency', 'Temperature', 'Humidity']
+            X = data[features]
+            y = data['Growth_Milestone']
 
+            # Convert categorical feature 'Soil_Type' into numeric values if necessary
+            X['Soil_Type'] = X['Soil_Type'].map({'Loamy': 1, 'Sandy': 2, 'Clay': 3})
+
+            # Standardization
+            scaler = StandardScaler()
+            X_scaled = scaler.fit_transform(X)
+
+            # Train-Test Split
+            X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=test_size, random_state=42)
+
+            # Train the Random Forest Model
+            clf = RandomForestClassifier(random_state=42)
+            clf.fit(X_train, y_train)
+
+            # Model Evaluation
+            y_pred = clf.predict(X_test)
+            accuracy = accuracy_score(y_test, y_pred)
+            report = classification_report(y_test, y_pred, output_dict=True)
+
+            st.write("### Model Performance")
+            st.write(f"**Accuracy:** {accuracy:.4f}")
+            st.write("**Classification Report:**")
+            st.dataframe(pd.DataFrame(report).transpose())
+
+            # Confusion Matrix
+            st.write("### Confusion Matrix")
+            cm = confusion_matrix(y_test, y_pred)
+            fig, ax = plt.subplots()
+            sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=['Seedling', 'Early Growth', 'Mature Plant'], yticklabels=['Seedling', 'Early Growth', 'Mature Plant'])
+            plt.ylabel('Actual')
+            plt.xlabel('Predicted')
+            st.pyplot(fig)
+
+            # Feature Visualization
+            st.write("### Feature Visualization")
+            plot_type = st.selectbox("Select Plot Type:", ["2D Plot", "3D Plot", "Correlation Matrix", "Line Plot"])
+
+            if plot_type == "2D Plot":
+                x_feature = st.selectbox("Select X-axis feature:", features)
+                y_feature = st.selectbox("Select Y-axis feature:", features)
+                fig, ax = plt.subplots()
+                ax.scatter(data[x_feature], data[y_feature], c=data['Growth_Milestone'], cmap='viridis', alpha=0.7)
+                ax.set_xlabel(x_feature)
+                ax.set_ylabel(y_feature)
+                st.pyplot(fig)
+
+            elif plot_type == "3D Plot":
+                if len(features) < 3:
+                    st.warning("Need at least 3 features for 3D Plot.")
+                else:
+                    x_feature = st.selectbox("Select X-axis feature:", features, key="3d_x")
+                    y_feature = st.selectbox("Select Y-axis feature:", features, key="3d_y")
+                    z_feature = st.selectbox("Select Z-axis feature:", features, key="3d_z")
+                    fig = plt.figure()
+                    ax = fig.add_subplot(111, projection='3d')
+                    ax.scatter(data[x_feature], data[y_feature], data[z_feature], c=data['Growth_Milestone'], cmap='viridis', alpha=0.7)
+                    ax.set_xlabel(x_feature)
+                    ax.set_ylabel(y_feature)
+                    ax.set_zlabel(z_feature)
+                    st.pyplot(fig)
+
+            elif plot_type == "Correlation Matrix":
+                fig, ax = plt.subplots()
+                sns.heatmap(data[features].corr(), annot=True, cmap='coolwarm', ax=ax)
+                st.pyplot(fig)
+
+            elif plot_type == "Line Plot":
+                fig, ax = plt.subplots()
+                for feature in features:
+                    ax.plot(data[feature], label=feature)
+                ax.legend()
+                st.pyplot(fig)
+
+            # Download Options
+            st.write("### Download Options")
+            data_csv = data.to_csv(index=False)
+            st.download_button("Download Dataset", data_csv, "dataset.csv", "text/csv")
+
+            # Save and download the trained model
+            model_file = "trained_model.pkl"
+            joblib.dump(clf, model_file)
+            st.download_button("Download Trained Model", model_file, file_name="trained_model.pkl")
