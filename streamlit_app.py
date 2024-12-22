@@ -190,11 +190,28 @@ if start_training:
     csv = saved_models_df.to_csv(index=False)
     st.download_button("Download Models as CSV", data=csv, file_name="saved_models.csv", mime="text/csv")
 
-    # Confusion Matrices
-    st.write("### Confusion Matrices")
-    cm = confusion_matrix(y_test, y_pred)
-    fig, ax = plt.subplots()
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=ax)
-    ax.set_xlabel('Predicted')
-    ax.set_ylabel('Actual')
+    # Learning Curves Display
+    st.write("### Learning Curves for All Models")
+    fig, axes = plt.subplots(2, 3, figsize=(18, 10))
+    axes = axes.flatten()
+    for i, (model_name, curve) in enumerate(learning_curves.items()):
+        axes[i].plot(curve["train_sizes"], curve["train_scores"], label="Train", color='blue')
+        axes[i].plot(curve["train_sizes"], curve["valid_scores"], label="Validation", color='orange')
+        axes[i].set_title(f"Learning Curve: {model_name}")
+        axes[i].set_xlabel('Training Size')
+        axes[i].set_ylabel('Score')
+        axes[i].legend()
+    plt.tight_layout()
+    st.pyplot(fig)
+    
+ # Confusion Matrices Display
+    st.write("### Confusion Matrices for All Models")
+    fig, axes = plt.subplots(2, 3, figsize=(18, 10))
+    axes = axes.flatten()
+    for i, (model_name, cm) in enumerate(confusion_matrices.items()):
+        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=axes[i], cbar=False)
+        axes[i].set_title(f"Confusion Matrix: {model_name}")
+        axes[i].set_xlabel('Predicted')
+        axes[i].set_ylabel('Actual')
+    plt.tight_layout()
     st.pyplot(fig)
