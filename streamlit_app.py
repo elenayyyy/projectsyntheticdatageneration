@@ -143,6 +143,21 @@ if start_training:
         file_name="scaled_data.csv",
         mime="text/csv"
     )
+    
+    # Dataset Statistics
+    st.write("### Dataset Statistics")
+    
+    # Original Dataset Statistics
+    st.write("**Original Dataset Statistics:**")
+    original_stats = data.describe().transpose()  # Get summary statistics
+    st.dataframe(original_stats)
+    
+    # Scaled Dataset Statistics
+    st.write("**Scaled Dataset Statistics:**")
+    scaled_data = pd.DataFrame(X_scaled, columns=features)
+    scaled_stats = scaled_data.describe().transpose()  # Get summary statistics for scaled data
+    st.dataframe(scaled_stats)
+
 
     # Best Model Performance
     st.write("### Best Model Performance")
