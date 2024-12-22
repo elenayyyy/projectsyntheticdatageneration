@@ -1,133 +1,95 @@
-import streamlit as st
-import pandas as pd
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier
+import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, accuracy_score, confusion_matrix
 import matplotlib.pyplot as plt
 import seaborn as sns
-from mpl_toolkits.mplot3d import Axes3D
-import joblib
 
-# App Title
-st.title("Food Ingredients and Allergens Modeling & Simulation")
+# Generating synthetic data based on given settings
+def generate_synthetic_data(samples=10000):
+    # Define feature means and std deviations for each class/feature
+    data = []
+    for _ in range(samples):
+        # Soil_Type
+        soil_type = np.random.choice(['Loamy', 'Sandy', 'Clay'])
+        
+        # Sunlight Hours
+        sunlight_hours = np.random.normal(8, 1)
+        
+        # Water Frequency (days)
+        water_frequency = np.random.normal(5, 2)
+        
+        # Temperature (°C)
+        temperature = np.random.normal(25, 2)
+        
+        # Humidity (%)
+        humidity = np.random.normal(75, 5)
+        
+        # Growth Milestone (target label: Seedling, Early Growth, Mature Plant)
+        growth_milestone = np.random.choice([0, 0.4, 0.8])  # 0: Seedling, 0.4: Early Growth, 0.8: Mature
+        
+        # Collect the row of data
+        row = [soil_type, sunlight_hours, water_frequency, temperature, humidity, growth_milestone]
+        data.append(row)
+    
+    # Convert to DataFrame
+    df = pd.DataFrame(data, columns=['Soil_Type', 'Sunlight_Hours', 'Water_Frequency', 'Temperature', 'Humidity', 'Growth_Milestone'])
+    return df
 
-# Sidebar for Data Upload or Synthetic Data Generation
-st.sidebar.header("Data Source")
-data_source = st.sidebar.radio("Choose Data Source:", ["Generate Synthetic Data", "Upload Dataset"])
+# Load or generate synthetic dataset
+df = generate_synthetic_data(10000)
 
-if data_source == "Upload Dataset":
-    uploaded_file = st.sidebar.file_uploader("Upload your CSV file:", type="csv")
-    if uploaded_file is not None:
-        data = pd.read_csv(uploaded_file)
-        st.write("### Uploaded Dataset:")
-        st.dataframe(data.head())
-else:
-    st.sidebar.subheader("Synthetic Data Generation")
-    num_samples = st.sidebar.number_input("Number of Samples", min_value=100, max_value=10000, value=1000)
-    feature_names = st.sidebar.text_input("Enter Feature Names (comma-separated):", "length,width,density")
-    class_names = st.sidebar.text_input("Enter Class Names (comma-separated):", "Ampalaya,Banana,Cabbage")
+# Prepare features and labels
+X = df.drop(columns='Growth_Milestone')
+y = df['Growth_Milestone']
 
-    features = [f.strip() for f in feature_names.split(",")]
-    classes = [c.strip() for c in class_names.split(",")]
+# Convert categorical 'Soil_Type' to numerical
+X = pd.get_dummies(X, columns=['Soil_Type'], drop_first=True)
 
-    synthetic_data = []
-    synthetic_labels = []
+# Split the data into training and test sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
 
-    for cls in classes:
-        st.sidebar.subheader(f"{cls} Settings")
-        params = {}
-        for feature in features:
-            mean = st.sidebar.number_input(f"Mean for {feature} ({cls})", value=50.0, key=f"{cls}_{feature}_mean")
-            std = st.sidebar.number_input(f"Std Dev for {feature} ({cls})", value=10.0, key=f"{cls}_{feature}_std")
-            params[feature] = (mean, std)
-
-        for _ in range(num_samples // len(classes)):
-            synthetic_data.append([np.random.normal(params[f][0], params[f][1]) for f in features])
-            synthetic_labels.append(cls)
-
-    data = pd.DataFrame(synthetic_data, columns=features)
-    data['Class'] = synthetic_labels
-    st.write("### Generated Synthetic Dataset:")
-    st.dataframe(data.head())
-
-# Train-Test Split Configuration
-st.sidebar.header("Train-Test Split Configuration")
-test_size = st.sidebar.slider("Test Size (%)", min_value=10, max_value=50, value=30) / 100.0
-
-X = data[features]
-y = data['Class']
+# Normalize the feature data
 scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
 
-X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=test_size, random_state=42)
+# Initialize the model (Random Forest)
+model = RandomForestClassifier(n_estimators=100, random_state=42)
+model.fit(X_train_scaled, y_train)
 
-# Train a Random Forest Model
-clf = RandomForestClassifier(random_state=42)
-clf.fit(X_train, y_train)
-
-# Model Evaluation
-y_pred = clf.predict(X_test)
+# Model performance on the test data
+y_pred = model.predict(X_test_scaled)
 accuracy = accuracy_score(y_test, y_pred)
-report = classification_report(y_test, y_pred, output_dict=True)
+print(f"Accuracy: {accuracy:.4f}")
+print("\nClassification Report:\n", classification_report(y_test, y_pred))
 
-st.write("### Model Performance")
-st.write(f"**Accuracy:** {accuracy:.4f}")
-st.write("**Classification Report:**")
-st.dataframe(pd.DataFrame(report).transpose())
+# Confusion Matrix
+conf_matrix = confusion_matrix(y_test, y_pred)
+plt.figure(figsize=(8, 6))
+sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues', xticklabels=['Seedling', 'Early Growth', 'Mature'], yticklabels=['Seedling', 'Early Growth', 'Mature'])
+plt.xlabel('Predicted')
+plt.ylabel('Actual')
+plt.title('Confusion Matrix')
+plt.show()
 
-# Feature Visualization
-st.write("### Feature Visualization")
-plot_type = st.selectbox("Select Plot Type:", ["2D Plot", "3D Plot", "Correlation Matrix", "Line Plot"])
+# Plot Learning Curves (Training vs Cross-validation scores)
+train_sizes = [1, 2, 3, 4, 5]  # Example train sizes, modify as needed
+train_scores = [model.score(X_train_scaled[:i], y_train[:i]) for i in train_sizes]
+cv_scores = [model.score(X_test_scaled[:i], y_test[:i]) for i in train_sizes]
 
-if plot_type == "2D Plot":
-    x_feature = st.selectbox("Select X-axis feature:", features)
-    y_feature = st.selectbox("Select Y-axis feature:", features)
-    fig, ax = plt.subplots()
-    for cls in classes:
-        subset = data[data['Class'] == cls]
-        ax.scatter(subset[x_feature], subset[y_feature], label=cls, alpha=0.7)
-    ax.set_xlabel(x_feature)
-    ax.set_ylabel(y_feature)
-    ax.legend()
-    st.pyplot(fig)
+plt.figure(figsize=(8, 6))
+plt.plot(train_sizes, train_scores, label='Training score', color='blue')
+plt.plot(train_sizes, cv_scores, label='Cross-validation score', color='orange')
+plt.fill_between(train_sizes, train_scores, cv_scores, color='lightgray', alpha=0.5)
+plt.title('Learning Curves')
+plt.xlabel('Number of Training Samples')
+plt.ylabel('Score')
+plt.legend()
+plt.show()
 
-elif plot_type == "3D Plot":
-    if len(features) < 3:
-        st.warning("Need at least 3 features for 3D Plot.")
-    else:
-        x_feature = st.selectbox("Select X-axis feature:", features, key="3d_x")
-        y_feature = st.selectbox("Select Y-axis feature:", features, key="3d_y")
-        z_feature = st.selectbox("Select Z-axis feature:", features, key="3d_z")
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        for cls in classes:
-            subset = data[data['Class'] == cls]
-            ax.scatter(subset[x_feature], subset[y_feature], subset[z_feature], label=cls, alpha=0.7)
-        ax.set_xlabel(x_feature)
-        ax.set_ylabel(y_feature)
-        ax.set_zlabel(z_feature)
-        ax.legend()
-        st.pyplot(fig)
-
-elif plot_type == "Correlation Matrix":
-    fig, ax = plt.subplots()
-    sns.heatmap(data[features].corr(), annot=True, cmap='coolwarm', ax=ax)
-    st.pyplot(fig)
-
-elif plot_type == "Line Plot":
-    fig, ax = plt.subplots()
-    for feature in features:
-        ax.plot(data[feature], label=feature)
-    ax.legend()
-    st.pyplot(fig)
-
-# Download Options
-st.write("### Download Options")
-data_csv = data.to_csv(index=False)
-st.download_button("Download Dataset", data_csv, "dataset.csv", "text/csv")
-
-model_file = "trained_model.pkl"
-joblib.dump(clf, model_file)
-st.download_button("Download Trained Model", model_file, file_name="trained_model.pkl")
+# Save the model
+import joblib
+joblib.dump(model, 'random_forest_model.pkl')
