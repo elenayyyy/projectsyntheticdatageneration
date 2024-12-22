@@ -14,6 +14,9 @@ import seaborn as sns
 import joblib
 from time import time
 from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import learning_curve
+from sklearn.metrics import confusion_matrix
+
 
 # App Title
 st.title("Water Quality Testing Generator")
@@ -92,23 +95,23 @@ models = {
 }
 
 # During training, store models and their metrics in session_state
+# Inside the training loop
 if start_training:
     with st.spinner("Training models... Please wait!"):
-        # Use the uploaded or synthetic dataset for training
+        # Start generating data and training the model
         X = data[features]
         y = data['Class']
-
-        # Encode categorical features if necessary (e.g., 'Soil_Type', 'Fertilizer_Type')
-        for feature in ['Soil_Type', 'Fertilizer_Type']:
-            le = LabelEncoder()
-            X[feature] = le.fit_transform(X[feature])
-
-        # Feature Scaling
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(X)
 
         # Train/Test Split
         X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=test_size, random_state=42)
+
+        # Initialize session state for learning curves and confusion matrices
+        if "learning_curves" not in st.session_state:
+            st.session_state["learning_curves"] = {}
+        if "confusion_matrices" not in st.session_state:
+            st.session_state["confusion_matrices"] = {}
 
         # Loop through models to train them
         for model_name, model in models.items():
@@ -136,13 +139,23 @@ if start_training:
                     "Training Time": training_time
                 }
 
+                # Calculate learning curve
+                train_sizes, train_scores, valid_scores = learning_curve(model, X_train, y_train, cv=5, n_jobs=-1)
+                st.session_state["learning_curves"][model_name] = {
+                    "train_sizes": train_sizes,
+                    "train_scores": train_scores.mean(axis=1),
+                    "valid_scores": valid_scores.mean(axis=1)
+                }
+
+                # Calculate confusion matrix
+                cm = confusion_matrix(y_test, y_pred)
+                st.session_state["confusion_matrices"][model_name] = cm
+
             except Exception as e:
                 st.error(f"Error while training {model_name}: {e}")
 
         # Now that models are saved, display confirmation
         st.success("Model training completed and models saved!")
-
-
 
 
 
@@ -309,9 +322,10 @@ if start_training:
             st.write("No models found in the session state.")
     else:
         st.write("No trained models or model metrics found in the session state.")
-    
-#Learning Curves        
-if "learning_curves" in st.session_state and st.session_state["learning_curves"]:
+
+
+# Learning Curves Display
+if "learning_curves" in st.session_state:
     st.write("### Learning Curves for All Models")
     fig, axes = plt.subplots(2, 3, figsize=(18, 10))
     axes = axes.flatten()
@@ -324,11 +338,10 @@ if "learning_curves" in st.session_state and st.session_state["learning_curves"]
         axes[i].legend()
     plt.tight_layout()
     st.pyplot(fig)
-else:
-    st.write("No learning curve data available.")
 
-#Confusion Matrix
-if "confusion_matrices" in st.session_state and st.session_state["confusion_matrices"]:
+
+# Confusion Matrices Display
+if "confusion_matrices" in st.session_state:
     st.write("### Confusion Matrices for All Models")
     fig, axes = plt.subplots(2, 3, figsize=(18, 10))
     axes = axes.flatten()
@@ -339,6 +352,5 @@ if "confusion_matrices" in st.session_state and st.session_state["confusion_matr
         axes[i].set_ylabel('Actual')
     plt.tight_layout()
     st.pyplot(fig)
-else:
-    st.write("No confusion matrix data available.")
+
 
