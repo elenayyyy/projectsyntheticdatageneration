@@ -1,19 +1,14 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 import seaborn as sns
 import joblib
-import io
 from time import time
-from sklearn.svm import SVC, LinearSVC
-from sklearn.linear_model import LogisticRegression, RidgeClassifier
-from sklearn.preprocessing import MinMaxScaler, StandardScaler
-from sklearn.naive_bayes import MultinomialNB
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier, ExtraTreesClassifier
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 
 # App Title
 st.title("Water Quality Testing Model and Simulation")
@@ -30,6 +25,7 @@ if data_source == "Upload Dataset":
         st.dataframe(data.head())
 else:
     st.sidebar.subheader("Synthetic Data Generation")
+    num_samples = st.sidebar.slider("Number of Samples", min_value=100, max_value=10000, value=1000)
     feature_names = st.sidebar.text_input("Enter Feature Names (comma-separated):", "Soil_Type,Sunlight_Hours,Water_Frequency,Fertilizer_Type,Temperature,Humidity")
     class_names = st.sidebar.text_input("Enter Class Names (comma-separated):", "Low,Medium,High")
 
@@ -39,8 +35,7 @@ else:
     synthetic_data = []
     synthetic_labels = []
 
-    num_samples = st.sidebar.slider("Number of Samples", min_value=100, max_value=10000, value=1000)
-
+    # Class-Specific Settings in Sidebar with Selectbox for Low, Medium, High
     st.sidebar.subheader("Class-Specific Settings")
     class_settings = {}
     for cls in classes:
@@ -51,91 +46,106 @@ else:
             std = st.sidebar.number_input(f"Std Dev for {feature} ({cls})", value=10.0, key=f"{cls}_{feature}_std")
             class_settings[cls][feature] = (mean, std)
 
+        # Generate synthetic data for each class
         for _ in range(num_samples // len(classes)):
             synthetic_data.append([np.random.normal(class_settings[cls][f][0], class_settings[cls][f][1]) for f in features])
             synthetic_labels.append(cls)
 
     data = pd.DataFrame(synthetic_data, columns=features)
     data['Class'] = synthetic_labels
+    # Display dataset after generation, will show once the button is clicked
+    display_data = False
 
+# Sample Size & Train/Test Split Configuration with Test Size Slider
 st.sidebar.header("Sample Size & Train/Test Split Configuration")
 test_size = st.sidebar.slider("Test Size (%)", min_value=10, max_value=50, value=30) / 100.0
 train_size = 1 - test_size
-
 st.sidebar.write(f"Test: {test_size * 100}% / Train: {train_size * 100}%")
 
+# Button for Training the Model
 start_training = st.sidebar.button("Generate Data and Train Models")
 
+# Check if the training button is clicked
 if start_training:
-    if data.empty:
-        st.warning("Please upload or generate data before training models.")
-    else:
-        X = data[features]
-        y = data['Class']
-        scaler = StandardScaler()
-        X_scaled = scaler.fit_transform(X)
+    # Start generating data and training the model
+    X = data[features]
+    y = data['Class']
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
 
-        scaler = MinMaxScaler()
-        X_scaled = scaler.fit_transform(X)
+    # Train/Test Split
+    X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=test_size, random_state=42)
 
-        X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=test_size, random_state=42)
+    # List of models to train
+    models = {
+        "ExtraTreesClassifier": ExtraTreesClassifier(random_state=42),
+        "RandomForestClassifier": RandomForestClassifier(random_state=42),
+        "SVC": SVC(random_state=42),
+        "LogisticRegression": LogisticRegression(max_iter=1000, random_state=42),
+        "KNeighborsClassifier": KNeighborsClassifier(),
+        "LinearSVC": LinearSVC(random_state=42),
+        "AdaBoostClassifier": AdaBoostClassifier(random_state=42),
+        "RidgeClassifier": RidgeClassifier(),
+        "MultinomialNB": MultinomialNB()
+    }
 
-        models = {
-            "ExtraTreesClassifier": ExtraTreesClassifier(random_state=42),
-            "RandomForestClassifier": RandomForestClassifier(random_state=42),
-            "SVC": SVC(random_state=42),
-            "LogisticRegression": LogisticRegression(max_iter=1000, random_state=42),
-            "KNeighborsClassifier": KNeighborsClassifier(),
-            "LinearSVC": LinearSVC(random_state=42),
-            "AdaBoostClassifier": AdaBoostClassifier(random_state=42),
-            "RidgeClassifier": RidgeClassifier(),
-            "MultinomialNB": MultinomialNB()
+    # Dictionary to store metrics for each model
+    model_metrics = {}
+
+    # Train each model and store metrics
+    for model_name, model in models.items():
+        start_time = time()
+        model.fit(X_train, y_train)
+        training_time = time() - start_time
+
+        # Model Evaluation
+        y_pred = model.predict(X_test)
+        accuracy = accuracy_score(y_test, y_pred)
+        precision, recall, f1_score, _ = classification_report(y_test, y_pred, output_dict=True)["accuracy"], classification_report(y_test, y_pred, output_dict=True)["precision"], classification_report(y_test, y_pred, output_dict=True)["recall"], classification_report(y_test, y_pred, output_dict=True)["f1-score"]
+        
+        # Store metrics
+        model_metrics[model_name] = {
+            "Accuracy": accuracy,
+            "Precision": precision,
+            "Recall": recall,
+            "F1 Score": f1_score,
+            "Training Time": training_time
         }
 
-        model_metrics = {}
+    # Save models to session state to persist across runs
+    st.session_state["model_metrics"] = model_metrics
+    st.session_state["models"] = models
 
-        for model_name, model in models.items():
-            start_time = time()
-            model.fit(X_train, y_train)
-            training_time = time() - start_time
+    # Show Results
+    st.write("### Dataset Split Information")
+    total_samples = len(data)
+    train_samples = len(X_train)
+    test_samples = len(X_test)
+    st.write(f"**Total Samples:** {total_samples}")
+    st.write(f"**Training Samples:** {train_samples} ({(train_samples/total_samples)*100:.2f}%)")
+    st.write(f"**Testing Samples:** {test_samples} ({(test_samples/total_samples)*100:.2f}%)")
 
-            if "trained_models" not in st.session_state:
-                st.session_state["trained_models"] = {}
-            st.session_state["trained_models"][model_name] = model
+    # Show Generated Data Sample
+    st.write("### Generated Data Sample")
+    st.write("**Original Data (Random samples from each class):**")
+    st.dataframe(data.head())
+    st.write("**Scaled Data (using best model's scaler):**")
+    st.dataframe(pd.DataFrame(X_scaled[:5], columns=features))
 
-            y_pred = model.predict(X_test)
-            report = classification_report(y_test, y_pred, output_dict=True)
-            precision = report["macro avg"]["precision"]
-            recall = report["macro avg"]["recall"]
-            f1_score = report["macro avg"]["f1-score"]
-            accuracy = accuracy_score(y_test, y_pred)
+    # Feature Visualization
+    st.write("### Feature Visualization")
+    fig, ax = plt.subplots()
+    ax.scatter(data[features[0]], data[features[1]], c=data['Class'].map({"Low": "blue", "Medium": "orange", "High": "green"}), alpha=0.7)
+    ax.set_xlabel(features[0])
+    ax.set_ylabel(features[1])
+    st.pyplot(fig)
 
-            model_metrics[model_name] = {
-                "Accuracy": accuracy,
-                "Precision": precision,
-                "Recall": recall,
-                "F1 Score": f1_score,
-                "Training Time": training_time
-            }
-
-        st.session_state["model_metrics"] = model_metrics
-
-        st.write("### Dataset Split Information")
-        total_samples = len(data)
-        train_samples = len(X_train)
-        test_samples = len(X_test)
-        st.write(f"**Total Samples:** {total_samples}")
-        st.write(f"**Training Samples:** {train_samples} ({(train_samples/total_samples)*100:.2f}%)")
-        st.write(f"**Testing Samples:** {test_samples} ({(test_samples/total_samples)*100:.2f}%)")
-
-        st.write("### Generated Data Sample")
-        st.dataframe(data.head())
-        st.dataframe(pd.DataFrame(X_scaled[:5], columns=features))
-
+# Performance Metrics Summary
 if "model_metrics" in st.session_state:
     st.write("### Performance Metrics Summary")
     selected_models = st.multiselect("Select models to compare", list(st.session_state["model_metrics"].keys()))
 
+    # Model Performance Metrics Comparison Barplot
     if selected_models:
         metrics_data = []
         for model in selected_models:
@@ -148,51 +158,6 @@ if "model_metrics" in st.session_state:
             })
         metrics_df = pd.DataFrame(metrics_data)
         metrics_df.set_index('Model', inplace=True)
+
+        st.write("**Model Performance Metrics Comparison**")
         st.bar_chart(metrics_df)
-
-# Display saved models
-if "trained_models" in st.session_state:
-    st.write("### Saved Models")
-    saved_models = []
-    for model_name, model in st.session_state["trained_models"].items():
-        accuracy = st.session_state["model_metrics"][model_name]["Accuracy"]
-        saved_models.append([model_name, accuracy])
-    saved_models_df = pd.DataFrame(saved_models, columns=["Model", "Accuracy"])
-    st.dataframe(saved_models_df)
-
-    # Download models in CSV format
-    csv = saved_models_df.to_csv(index=False)
-    st.download_button("Download Models as CSV", data=csv, file_name="saved_models.csv", mime="text/csv")
-
-# Learning Curves
-if "trained_models" in st.session_state:
-    st.write("### Learning Curves")
-    for model_name, model in st.session_state["trained_models"].items():
-        # Plotting learning curves
-        train_scores, valid_scores = [], []
-        for i in range(1, len(X_train) + 1, 50):
-            model.fit(X_train[:i], y_train[:i])
-            train_scores.append(accuracy_score(y_train[:i], model.predict(X_train[:i])))
-            valid_scores.append(accuracy_score(y_test, model.predict(X_test)))
-        
-        plt.plot(range(50, len(X_train) + 1, 50), train_scores, label='Training Score', color='blue')
-        plt.plot(range(50, len(X_train) + 1, 50), valid_scores, label='Validation Score', color='orange')
-        plt.fill_between(range(50, len(X_train) + 1, 50), np.array(valid_scores) - np.std(valid_scores), np.array(valid_scores) + np.std(valid_scores), alpha=0.2, color='orange')
-        plt.title(f"Learning Curve for {model_name}")
-        plt.xlabel("Number of Training Samples")
-        plt.ylabel("Accuracy")
-        plt.legend()
-        st.pyplot()
-
-# Confusion Matrices
-st.write("### Confusion Matrices")
-if "trained_models" in st.session_state:
-    for model_name, model in st.session_state["trained_models"].items():
-        y_pred = model.predict(X_test)
-        cm = confusion_matrix(y_test, y_pred)
-        fig, ax = plt.subplots()
-        sns.heatmap(cm, annot=True, fmt='d', cmap='viridis', ax=ax)
-        ax.set_title(f"Confusion Matrix for {model_name}")
-        ax.set_xlabel('Predicted')
-        ax.set_ylabel('Actual')
-        st.pyplot(fig)
