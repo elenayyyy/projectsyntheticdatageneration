@@ -70,14 +70,14 @@ st.sidebar.write(f"Test: {test_size * 100}% / Train: {train_size * 100}%")
 start_training = st.sidebar.button("Generate Data and Train Models")
 
 # Define models to train (add all your models here)
-#models = {
- #   "ExtraTreesClassifier": ExtraTreesClassifier(random_state=42),
-  #  "RandomForestClassifier": RandomForestClassifier(random_state=42),
-   # "LogisticRegression": LogisticRegression(random_state=42),
-    #"SVC": SVC(random_state=42),
-    #"KNeighborsClassifier": KNeighborsClassifier(),
-    # Add more models if needed
-#}
+models = {
+    "ExtraTreesClassifier": ExtraTreesClassifier(random_state=42),
+    "RandomForestClassifier": RandomForestClassifier(random_state=42),
+    "LogisticRegression": LogisticRegression(random_state=42),
+    "SVC": SVC(random_state=42),
+    "KNeighborsClassifier": KNeighborsClassifier(),
+     Add more models if needed
+}
 
 # During training, store models and their metrics in session_state
 if start_training:
