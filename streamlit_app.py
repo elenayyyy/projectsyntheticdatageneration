@@ -108,25 +108,29 @@ if start_training:
 
     # Train each model and store metrics
     for model_name, model in models.items():
-        start_time = time()
-        model.fit(X_train, y_train)
-        training_time = time() - start_time
+    start_time = time()
+    model.fit(X_train, y_train)  # Train the model
+    training_time = time() - start_time
 
-        # Model Evaluation
-        report = classification_report(y_test, y_pred, output_dict=True)
-        precision = report["macro avg"]["precision"]
-        recall = report["macro avg"]["recall"]
-        f1_score = report["macro avg"]["f1-score"]
-        accuracy = accuracy_score(y_test, y_pred)
+    # Predict on test data
+    y_pred = model.predict(X_test)
 
-        # Store metrics
-        model_metrics[model_name] = {
-            "Accuracy": accuracy,
-            "Precision": precision,
-            "Recall": recall,
-            "F1 Score": f1_score,
-            "Training Time": training_time
-        }
+    # Model Evaluation
+    report = classification_report(y_test, y_pred, output_dict=True)
+    precision = report["macro avg"]["precision"]
+    recall = report["macro avg"]["recall"]
+    f1_score = report["macro avg"]["f1-score"]
+    accuracy = accuracy_score(y_test, y_pred)
+
+    # Store metrics
+    model_metrics[model_name] = {
+        "Accuracy": accuracy,
+        "Precision": precision,
+        "Recall": recall,
+        "F1 Score": f1_score,
+        "Training Time": training_time
+    }
+
 
     # Save models to session state to persist across runs
     st.session_state["model_metrics"] = model_metrics
