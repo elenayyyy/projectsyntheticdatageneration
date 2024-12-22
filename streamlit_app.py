@@ -8,15 +8,12 @@ import io
 from time import time
 from sklearn.svm import SVC, LinearSVC
 from sklearn.linear_model import LogisticRegression, RidgeClassifier
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.ensemble import AdaBoostClassifier
-from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
+from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier, ExtraTreesClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
-from sklearn.preprocessing import StandardScaler
-
 
 # App Title
 st.title("Water Quality Testing Model and Simulation")
@@ -42,11 +39,8 @@ else:
     synthetic_data = []
     synthetic_labels = []
 
-    # Define number of samples before using it
     num_samples = st.sidebar.slider("Number of Samples", min_value=100, max_value=10000, value=1000)
 
-
-    # Class-Specific Settings in Sidebar with Selectbox for Low, Medium, High
     st.sidebar.subheader("Class-Specific Settings")
     class_settings = {}
     for cls in classes:
@@ -57,121 +51,91 @@ else:
             std = st.sidebar.number_input(f"Std Dev for {feature} ({cls})", value=10.0, key=f"{cls}_{feature}_std")
             class_settings[cls][feature] = (mean, std)
 
-        # Generate synthetic data for each class
         for _ in range(num_samples // len(classes)):
             synthetic_data.append([np.random.normal(class_settings[cls][f][0], class_settings[cls][f][1]) for f in features])
             synthetic_labels.append(cls)
 
     data = pd.DataFrame(synthetic_data, columns=features)
     data['Class'] = synthetic_labels
-    # Display dataset after generation, will show once the button is clicked
-    display_data = False
 
-# Sample Size & Train/Test Split Configuration with Test Size Slider
-#num_samples = st.sidebar.slider("Number of Samples", min_value=100, max_value=10000, value=1000)
 st.sidebar.header("Sample Size & Train/Test Split Configuration")
-
-# Test size slider, as percentage
 test_size = st.sidebar.slider("Test Size (%)", min_value=10, max_value=50, value=30) / 100.0
 train_size = 1 - test_size
 
-# Display selected split values
 st.sidebar.write(f"Test: {test_size * 100}% / Train: {train_size * 100}%")
 
-# Button for Training the Model
 start_training = st.sidebar.button("Generate Data and Train Models")
 
-# Check if the training button is clicked
 if start_training:
-    # Start generating data and training the model
-    X = data[features]
-    y = data['Class']
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
+    if data.empty:
+        st.warning("Please upload or generate data before training models.")
+    else:
+        X = data[features]
+        y = data['Class']
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X)
 
-    # Scaling features to a non-negative range
-    scaler = MinMaxScaler()
-    X_scaled = scaler.fit_transform(X)
+        scaler = MinMaxScaler()
+        X_scaled = scaler.fit_transform(X)
 
-    # Train/Test Split
-    X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=test_size, random_state=42)
+        X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=test_size, random_state=42)
 
-    # List of models to train
-    models = {
-        "ExtraTreesClassifier": ExtraTreesClassifier(random_state=42),
-        "RandomForestClassifier": RandomForestClassifier(random_state=42),
-        "SVC": SVC(random_state=42),
-        "LogisticRegression": LogisticRegression(max_iter=1000, random_state=42),
-        "KNeighborsClassifier": KNeighborsClassifier(),
-        "LinearSVC": LinearSVC(random_state=42),
-        "AdaBoostClassifier": AdaBoostClassifier(random_state=42),
-        "RidgeClassifier": RidgeClassifier(),
-        "MultinomialNB": MultinomialNB()  # Now works with MinMaxScaler
-    }
+        models = {
+            "ExtraTreesClassifier": ExtraTreesClassifier(random_state=42),
+            "RandomForestClassifier": RandomForestClassifier(random_state=42),
+            "SVC": SVC(random_state=42),
+            "LogisticRegression": LogisticRegression(max_iter=1000, random_state=42),
+            "KNeighborsClassifier": KNeighborsClassifier(),
+            "LinearSVC": LinearSVC(random_state=42),
+            "AdaBoostClassifier": AdaBoostClassifier(random_state=42),
+            "RidgeClassifier": RidgeClassifier(),
+            "MultinomialNB": MultinomialNB()
+        }
 
-    # Dictionary to store metrics for each model
-    model_metrics = {}
+        model_metrics = {}
 
-    # Train each model and store metrics
-    for model_name, model in models.items():
-        start_time = time()
-        model.fit(X_train, y_train)  # Train the model
-        training_time = time() - start_time
+        for model_name, model in models.items():
+            start_time = time()
+            model.fit(X_train, y_train)
+            training_time = time() - start_time
 
-    # Predict on test data
-    y_pred = model.predict(X_test)
+            if "trained_models" not in st.session_state:
+                st.session_state["trained_models"] = {}
+            st.session_state["trained_models"][model_name] = model
 
-    # Model Evaluation
-    report = classification_report(y_test, y_pred, output_dict=True)
-    precision = report["macro avg"]["precision"]
-    recall = report["macro avg"]["recall"]
-    f1_score = report["macro avg"]["f1-score"]
-    accuracy = accuracy_score(y_test, y_pred)
+            y_pred = model.predict(X_test)
+            report = classification_report(y_test, y_pred, output_dict=True)
+            precision = report["macro avg"]["precision"]
+            recall = report["macro avg"]["recall"]
+            f1_score = report["macro avg"]["f1-score"]
+            accuracy = accuracy_score(y_test, y_pred)
 
-    # Store metrics
-    model_metrics[model_name] = {
-        "Accuracy": accuracy,
-        "Precision": precision,
-        "Recall": recall,
-        "F1 Score": f1_score,
-        "Training Time": training_time
-    }
+            model_metrics[model_name] = {
+                "Accuracy": accuracy,
+                "Precision": precision,
+                "Recall": recall,
+                "F1 Score": f1_score,
+                "Training Time": training_time
+            }
 
+        st.session_state["model_metrics"] = model_metrics
 
-    # Save models to session state to persist across runs
-    st.session_state["model_metrics"] = model_metrics
-    st.session_state["models"] = models
+        st.write("### Dataset Split Information")
+        total_samples = len(data)
+        train_samples = len(X_train)
+        test_samples = len(X_test)
+        st.write(f"**Total Samples:** {total_samples}")
+        st.write(f"**Training Samples:** {train_samples} ({(train_samples/total_samples)*100:.2f}%)")
+        st.write(f"**Testing Samples:** {test_samples} ({(test_samples/total_samples)*100:.2f}%)")
 
-    # Show Results
-    st.write("### Dataset Split Information")
-    total_samples = len(data)
-    train_samples = len(X_train)
-    test_samples = len(X_test)
-    st.write(f"**Total Samples:** {total_samples}")
-    st.write(f"**Training Samples:** {train_samples} ({(train_samples/total_samples)*100:.2f}%)")
-    st.write(f"**Testing Samples:** {test_samples} ({(test_samples/total_samples)*100:.2f}%)")
+        st.write("### Generated Data Sample")
+        st.dataframe(data.head())
+        st.dataframe(pd.DataFrame(X_scaled[:5], columns=features))
 
-    # Show Generated Data Sample
-    st.write("### Generated Data Sample")
-    st.write("**Original Data (Random samples from each class):**")
-    st.dataframe(data.head())
-    st.write("**Scaled Data (using best model's scaler):**")
-    st.dataframe(pd.DataFrame(X_scaled[:5], columns=features))
-
-    # Feature Visualization
-    st.write("### Feature Visualization")
-    fig, ax = plt.subplots()
-    ax.scatter(data[features[0]], data[features[1]], c=data['Class'].map({"Low": "blue", "Medium": "orange", "High": "green"}), alpha=0.7)
-    ax.set_xlabel(features[0])
-    ax.set_ylabel(features[1])
-    st.pyplot(fig)
-
-# Performance Metrics Summary
 if "model_metrics" in st.session_state:
     st.write("### Performance Metrics Summary")
     selected_models = st.multiselect("Select models to compare", list(st.session_state["model_metrics"].keys()))
 
-    # Model Performance Metrics Comparison Barplot
     if selected_models:
         metrics_data = []
         for model in selected_models:
@@ -184,54 +148,33 @@ if "model_metrics" in st.session_state:
             })
         metrics_df = pd.DataFrame(metrics_data)
         metrics_df.set_index('Model', inplace=True)
-
-        st.write("**Model Performance Metrics Comparison**")
         st.bar_chart(metrics_df)
 
-    # Model Performance Metrics Comparison Barplot
-    if selected_models:
-        metrics_data = []
-        for model in selected_models:
-            metrics_data.append({
-                "Model": model,
-                "Accuracy": np.random.rand(),  # Replace with real accuracy values
-                "Precision": np.random.rand(),  # Replace with real precision values
-                "Recall": np.random.rand(),  # Replace with real recall values
-                "F1 Score": np.random.rand()  # Replace with real F1 score values
-            })
-        metrics_df = pd.DataFrame(metrics_data)
-        metrics_df.set_index('Model', inplace=True)
+if "trained_models" in st.session_state:
+    st.write("### Save and Download Trained Models")
+    model_name = st.selectbox("Choose a model to save:", list(st.session_state["trained_models"].keys()))
 
-        st.write("**Model Performance Metrics Comparison**")
-        st.bar_chart(metrics_df)
+    if st.button("Save Selected Model"):
+        selected_model = st.session_state["trained_models"][model_name]
+        model_io = io.BytesIO()
+        joblib.dump(selected_model, model_io)
+        model_io.seek(0)
 
-    # Saved Models
-    st.write("### Saved Models")
+        st.download_button(
+            label=f"Download {model_name} Model",
+            data=model_io,
+            file_name=f"{model_name}.pkl",
+            mime="application/octet-stream"
+        )
 
-    # Saved Models download buttons
-    st.write("Download Models:")
-
-    # Create a BytesIO stream for the ExtraTreesClassifier model
-    model_io = io.BytesIO()
-    # Ensure the ExtraTreesClassifier is trained and assigned to clf
-    clf = models["ExtraTreesClassifier"]
-    joblib.dump(clf, model_io)  # Serialize the ExtraTreesClassifier to the BytesIO object
-
-    model_io.seek(0)  # Rewind the BytesIO object to the beginning so it can be read
-
-    # Provide the download button for the ExtraTreesClassifier model
-    st.download_button(
-    label="Download ExtraTreesClassifier Model",
-    data=model_io,
-    file_name="ExtraTreesClassifier.pkl",
-    mime="application/octet-stream"
-    )
-
-    # Confusion Matrices
-    st.write("### Confusion Matrices")
-    cm = confusion_matrix(y_test, y_pred)
-    fig, ax = plt.subplots()
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=ax)
-    ax.set_xlabel('Predicted')
-    ax.set_ylabel('Actual')
-    st.pyplot(fig)
+st.write("### Confusion Matrices")
+if "trained_models" in st.session_state:
+    for model_name, model in st.session_state["trained_models"].items():
+        y_pred = model.predict(X_test)
+        cm = confusion_matrix(y_test, y_pred)
+        fig, ax = plt.subplots()
+        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=ax)
+        ax.set_title(f"Confusion Matrix for {model_name}")
+        ax.set_xlabel('Predicted')
+        ax.set_ylabel('Actual')
+        st.pyplot(fig)
