@@ -117,7 +117,7 @@ if start_training:
                 }
 
                 # Debugging: Display saved model and metrics for verification
-                st.write(f"Model {model_name} saved with accuracy: {accuracy}")
+               # st.write(f"Model {model_name} saved with accuracy: {accuracy}")
             
             except Exception as e:
                 st.error(f"Error while training {model_name}: {e}")
