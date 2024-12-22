@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
+from sklearn.ensemble import ExtraTreesClassifier, RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 from sklearn.preprocessing import StandardScaler
@@ -24,7 +24,7 @@ if data_source == "Upload Dataset":
         st.dataframe(data.head())
 else:
     st.sidebar.subheader("Synthetic Data Generation")
-    num_samples = st.sidebar.number_input("Number of Samples", min_value=500, max_value=50000, value=1000)
+    num_samples = st.sidebar.slider("Number of Samples", min_value=500, max_value=50000, value=1000, step=500)
     feature_names = st.sidebar.text_input("Enter Feature Names (comma-separated):", "Soil_Type,Sunlight_Hours,Water_Frequency,Fertilizer_Type,Temperature,Humidity")
     class_names = st.sidebar.text_input("Enter Class Names (comma-separated):", "Low,Medium,High")
 
@@ -34,7 +34,7 @@ else:
     synthetic_data = []
     synthetic_labels = []
 
-    # Class-Specific Settings in Sidebar
+    # Class-Specific Settings in Sidebar (Select Box for Low, Medium, High)
     st.sidebar.subheader("Class-Specific Settings")
     class_settings = {}
     for cls in classes:
@@ -52,14 +52,24 @@ else:
 
     data = pd.DataFrame(synthetic_data, columns=features)
     data['Class'] = synthetic_labels
-    # Display dataset after generation, will show once the button is clicked
     display_data = False
 
 # Sample Size & Train/Test Split Configuration
 st.sidebar.header("Sample Size & Train/Test Split Configuration")
 test_size = st.sidebar.slider("Test Size (%)", min_value=10, max_value=50, value=30) / 100.0
-num_samples_range = st.sidebar.selectbox("Number of Samples", [500, 5000, 50000])
-train_test_split = f"Test: {int(test_size*100)}% / Train: {100-int(test_size*100)}%"
+train_size = 1 - test_size  # Calculated dynamically
+
+# Display Train/Test Split Percentages
+st.sidebar.write(f"**Test Size:** {test_size*100:.2f}%")
+st.sidebar.write(f"**Train Size:** {train_size*100:.2f}%")
+
+# Model Comparison in Sidebar
+st.sidebar.subheader("Model Comparison")
+models_to_compare = st.sidebar.multiselect(
+    "Select models to compare:",
+    ["ExtraTreesClassifier", "GaussianNB", "MLPClassifier", "LogisticRegression", "RandomForestClassifier", 
+     "SVC", "LinearSVC", "KNeighborsClassifier", "AdaBoostClassifier", "RidgeClassifier", "MultinomialNB"]
+)
 
 # Button for Training the Model
 start_training = st.sidebar.button("Generate Data and Train Models")
@@ -75,23 +85,60 @@ if start_training:
     # Train/Test Split
     X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=test_size, random_state=42)
 
-    # Train a Random Forest Model
-    clf = ExtraTreesClassifier(random_state=42)
-    clf.fit(X_train, y_train)
+    # Evaluate selected models
+    model_results = {}
+    for model_name in models_to_compare:
+        if model_name == "ExtraTreesClassifier":
+            model = ExtraTreesClassifier(random_state=42)
+        elif model_name == "RandomForestClassifier":
+            model = RandomForestClassifier(random_state=42)
+        elif model_name == "GaussianNB":
+            from sklearn.naive_bayes import GaussianNB
+            model = GaussianNB()
+        elif model_name == "MLPClassifier":
+            from sklearn.neural_network import MLPClassifier
+            model = MLPClassifier(random_state=42)
+        elif model_name == "LogisticRegression":
+            from sklearn.linear_model import LogisticRegression
+            model = LogisticRegression(random_state=42)
+        elif model_name == "SVC":
+            from sklearn.svm import SVC
+            model = SVC(random_state=42)
+        elif model_name == "LinearSVC":
+            from sklearn.svm import LinearSVC
+            model = LinearSVC(random_state=42)
+        elif model_name == "KNeighborsClassifier":
+            from sklearn.neighbors import KNeighborsClassifier
+            model = KNeighborsClassifier()
+        elif model_name == "AdaBoostClassifier":
+            from sklearn.ensemble import AdaBoostClassifier
+            model = AdaBoostClassifier(random_state=42)
+        elif model_name == "RidgeClassifier":
+            from sklearn.linear_model import RidgeClassifier
+            model = RidgeClassifier()
+        elif model_name == "MultinomialNB":
+            from sklearn.naive_bayes import MultinomialNB
+            model = MultinomialNB()
 
-    # Model Evaluation
-    y_pred = clf.predict(X_test)
-    accuracy = accuracy_score(y_test, y_pred)
-    report = classification_report(y_test, y_pred, output_dict=True)
+        # Fit model and store results
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
+        accuracy = accuracy_score(y_test, y_pred)
+        report = classification_report(y_test, y_pred, output_dict=True)
+        model_results[model_name] = {'accuracy': accuracy, 'classification_report': report}
 
     # Set the flag to show the dataset and output
     display_data = True
 
+# Show Results only after running
+if start_training:
     # Show Results
     st.write("### Model Performance")
-    st.write(f"**Accuracy:** {accuracy:.4f}")
-    st.write("**Classification Report:**")
-    st.dataframe(pd.DataFrame(report).transpose())
+    for model_name, result in model_results.items():
+        st.write(f"**Model:** {model_name}")
+        st.write(f"**Accuracy:** {result['accuracy']:.4f}")
+        st.write("**Classification Report:**")
+        st.dataframe(pd.DataFrame(result['classification_report']).transpose())
 
     # Show Dataset Split Information
     total_samples = len(data)
@@ -136,28 +183,18 @@ if start_training:
     st.pyplot(fig)
 
     # Show Best Model Performance
+    best_model_name = max(model_results, key=lambda x: model_results[x]['accuracy'])
     st.write("### Best Model Performance")
-    st.write(f"**Best Model:** ExtraTreesClassifier")
-    st.write(f"**Accuracy:** {accuracy:.4f}")
+    st.write(f"**Best Model:** {best_model_name}")
+    st.write(f"**Accuracy:** {model_results[best_model_name]['accuracy']:.4f}")
 
     # Show Model Comparison
     st.write("### Model Comparison")
-    model_comparison = {
-        "Model": ["ExtraTreesClassifier", "GaussianNB", "MLPClassifier", "LogisticRegression", "RandomForestClassifier", "SVC", "LinearSVC", "KNeighborsClassifier", "AdaBoostClassifier", "RidgeClassifier", "MultinomialNB"],
-        "Accuracy": [accuracy, 0.89, 0.87, 0.84, 0.83, 0.81, 0.79, 0.77, 0.75, 0.74, 0.72]  # Dummy accuracy values, replace with actual evaluations
-    }
-    model_comparison_df = pd.DataFrame(model_comparison)
-    st.dataframe(model_comparison_df)
-
-    # Saved Models
-    st.write("### Saved Models")
-    joblib.dump(clf, "water_quality_model.pkl")
-    st.download_button(
-        label="Download Model (Pickle)",
-        data=open("water_quality_model.pkl", "rb").read(),
-        file_name="water_quality_model.pkl",
-        mime="application/octet-stream"
-    )
+    model_comparison = pd.DataFrame({
+        "Model": list(model_results.keys()),
+        "Accuracy": [result['accuracy'] for result in model_results.values()]
+    })
+    st.dataframe(model_comparison)
 
     # Download Dataset
     st.write("### Download Dataset")
