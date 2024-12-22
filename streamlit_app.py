@@ -8,7 +8,6 @@ from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 import seaborn as sns
 import joblib
-import io
 from time import time
 
 # App Title
@@ -26,7 +25,6 @@ if data_source == "Upload Dataset":
         st.dataframe(data.head())
 else:
     st.sidebar.subheader("Synthetic Data Generation")
-    num_samples = st.sidebar.slider("Number of Samples", min_value=100, max_value=10000, value=1000)
     feature_names = st.sidebar.text_input("Enter Feature Names (comma-separated):", "Soil_Type,Sunlight_Hours,Water_Frequency,Fertilizer_Type,Temperature,Humidity")
     class_names = st.sidebar.text_input("Enter Class Names (comma-separated):", "Low,Medium,High")
 
@@ -58,9 +56,14 @@ else:
     display_data = False
 
 # Sample Size & Train/Test Split Configuration with Test Size Slider
+num_samples = st.sidebar.slider("Number of Samples", min_value=100, max_value=10000, value=1000)
 st.sidebar.header("Sample Size & Train/Test Split Configuration")
+
+# Test size slider, as percentage
 test_size = st.sidebar.slider("Test Size (%)", min_value=10, max_value=50, value=30) / 100.0
 train_size = 1 - test_size
+
+# Display selected split values
 st.sidebar.write(f"Test: {test_size * 100}% / Train: {train_size * 100}%")
 
 # Button for Training the Model
@@ -77,19 +80,45 @@ if start_training:
     # Train/Test Split
     X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=test_size, random_state=42)
 
-    # Train a Random Forest Model
-    clf = ExtraTreesClassifier(random_state=42)
-    start_time = time()
-    clf.fit(X_train, y_train)
-    training_time = time() - start_time
+    # List of models to train
+    models = {
+        "ExtraTreesClassifier": ExtraTreesClassifier(random_state=42),
+        "RandomForestClassifier": RandomForestClassifier(random_state=42),
+        "SVC": SVC(random_state=42),
+        "LogisticRegression": LogisticRegression(max_iter=1000, random_state=42),
+        "KNeighborsClassifier": KNeighborsClassifier(),
+        "LinearSVC": LinearSVC(random_state=42),
+        "AdaBoostClassifier": AdaBoostClassifier(random_state=42),
+        "RidgeClassifier": RidgeClassifier(),
+        "MultinomialNB": MultinomialNB()
+    }
 
-    # Model Evaluation
-    y_pred = clf.predict(X_test)
-    accuracy = accuracy_score(y_test, y_pred)
-    report = classification_report(y_test, y_pred, output_dict=True)
+    # Dictionary to store metrics for each model
+    model_metrics = {}
 
-    # Set the flag to show the dataset and output
-    display_data = True
+    # Train each model and store metrics
+    for model_name, model in models.items():
+        start_time = time()
+        model.fit(X_train, y_train)
+        training_time = time() - start_time
+
+        # Model Evaluation
+        y_pred = model.predict(X_test)
+        accuracy = accuracy_score(y_test, y_pred)
+        precision, recall, f1_score, _ = classification_report(y_test, y_pred, output_dict=True)["accuracy"], classification_report(y_test, y_pred, output_dict=True)["precision"], classification_report(y_test, y_pred, output_dict=True)["recall"], classification_report(y_test, y_pred, output_dict=True)["f1-score"]
+        
+        # Store metrics
+        model_metrics[model_name] = {
+            "Accuracy": accuracy,
+            "Precision": precision,
+            "Recall": recall,
+            "F1 Score": f1_score,
+            "Training Time": training_time
+        }
+
+    # Save models to session state to persist across runs
+    st.session_state["model_metrics"] = model_metrics
+    st.session_state["models"] = models
 
     # Show Results
     st.write("### Dataset Split Information")
@@ -115,54 +144,27 @@ if start_training:
     ax.set_ylabel(features[1])
     st.pyplot(fig)
 
-    # 3D Plot (Optional)
-    st.write("### 3D Plot")
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(data[features[0]], data[features[1]], data[features[2]], c=data['Class'].map({"Low": "blue", "Medium": "orange", "High": "green"}))
-    ax.set_xlabel(features[0])
-    ax.set_ylabel(features[1])
-    ax.set_zlabel(features[2])
-    st.pyplot(fig)
-
-    # Download Dataset
-    st.write("### Download Dataset")
-    st.download_button(
-        label="Download Original Dataset (CSV)",
-        data=data.to_csv(index=False).encode(),
-        file_name="original_data.csv",
-        mime="text/csv"
-    )
-    st.download_button(
-        label="Download Scaled Dataset (CSV)",
-        data=pd.DataFrame(X_scaled, columns=features).to_csv(index=False).encode(),
-        file_name="scaled_data.csv",
-        mime="text/csv"
-    )
-
-    # Best Model Performance
-    st.write("### Best Model Performance")
-    st.write(f"**Best Model:** ExtraTreesClassifier")
-    st.write(f"**Accuracy:** {accuracy:.4f}")
-    st.write(f"**Training Time:** {training_time:.2f} seconds")
-
-    # Model Comparison
-    st.write("### Model Comparison")
-    model_comparison = {
-        "Model": ["ExtraTreesClassifier", "RandomForestClassifier", "SVC", "LogisticRegression", "KNeighborsClassifier"],
-        "Accuracy": [accuracy, 0.89, 0.87, 0.84, 0.83],  # Dummy accuracy values, replace with actual evaluations
-        "Precision": [0.91, 0.87, 0.85, 0.82, 0.81],  # Example precision values
-        "Recall": [0.92, 0.88, 0.86, 0.83, 0.80],  # Example recall values
-        "F1 Score": [0.91, 0.87, 0.85, 0.82, 0.80],  # Example f1 score values
-        "Training Time (s)": [training_time, 1.2, 1.3, 1.1, 1.0],  # Example training times
-        "Status": ["Trained", "Trained", "Trained", "Trained", "Trained"]
-    }
-    model_comparison_df = pd.DataFrame(model_comparison)
-    st.dataframe(model_comparison_df)
-
-    # Performance Metrics Summary
+# Performance Metrics Summary
+if "model_metrics" in st.session_state:
     st.write("### Performance Metrics Summary")
-    selected_models = st.multiselect("Select models to compare", ["ExtraTreesClassifier", "GaussianNB", "MLPClassifier", "LogisticRegression", "RandomForestClassifier", "SVC", "LinearSVC", "KNeighborsClassifier", "AdaBoostClassifier", "RidgeClassifier", "MultinomialNB"])
+    selected_models = st.multiselect("Select models to compare", list(st.session_state["model_metrics"].keys()))
+
+    # Model Performance Metrics Comparison Barplot
+    if selected_models:
+        metrics_data = []
+        for model in selected_models:
+            metrics_data.append({
+                "Model": model,
+                "Accuracy": st.session_state["model_metrics"][model]["Accuracy"],
+                "Precision": st.session_state["model_metrics"][model]["Precision"],
+                "Recall": st.session_state["model_metrics"][model]["Recall"],
+                "F1 Score": st.session_state["model_metrics"][model]["F1 Score"]
+            })
+        metrics_df = pd.DataFrame(metrics_data)
+        metrics_df.set_index('Model', inplace=True)
+
+        st.write("**Model Performance Metrics Comparison**")
+        st.bar_chart(metrics_df)
 
     # Model Performance Metrics Comparison Barplot
     if selected_models:
