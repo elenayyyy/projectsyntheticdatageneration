@@ -223,9 +223,20 @@ if start_training:
         st.dataframe(saved_models_df)
     
     # Download models in CSV format
-    csv = saved_models_df.to_csv(index=False)
-    st.download_button("Download Models as CSV", data=csv, file_name="saved_models.csv", mime="text/csv")
-
+    # Assuming the models are saved in the session state
+    if "trained_models" in st.session_state:
+        st.write("### Download Models:")
+        for model_name, model in st.session_state["trained_models"].items():
+            # Serialize the model to a .pkl file
+            model_file = joblib.dumps(model)
+            
+        # Provide a download button for each model
+        st.download_button(
+            label=f"Download {model_name} Model",
+            data=model_file,
+            file_name=f"{model_name}_model.pkl",
+            mime="application/octet-stream"
+        )
     # Learning Curves Display
     st.write("### Learning Curves for All Models")
     fig, axes = plt.subplots(2, 3, figsize=(18, 10))
