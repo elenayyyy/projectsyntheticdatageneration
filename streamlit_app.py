@@ -90,6 +90,28 @@ if start_training:
         accuracy = accuracy_score(y_test, y_pred)
         report = classification_report(y_test, y_pred, output_dict=True)
 
+        # Save the model and metrics in session state for later display
+        if "trained_models" not in st.session_state:
+            st.session_state["trained_models"] = {}
+
+        st.session_state["trained_models"]["ExtraTreesClassifier"] = clf
+        st.session_state["model_metrics"] = {
+            "ExtraTreesClassifier": {
+                "Accuracy": accuracy
+            }
+        }
+
+        # Optionally store learning curves and confusion matrix
+        learning_curve_data = {}  # Replace with actual learning curve data
+        st.session_state["learning_curves"] = {
+            "ExtraTreesClassifier": learning_curve_data
+        }
+
+        confusion_matrix_data = confusion_matrix(y_test, y_pred)
+        st.session_state["confusion_matrices"] = {
+            "ExtraTreesClassifier": confusion_matrix_data
+        }
+
         # Set the flag to show the dataset and output
         display_data = True
 
@@ -113,7 +135,7 @@ if start_training:
     st.dataframe(pd.DataFrame(X_scaled[:5], columns=features))
 
 
-        # Feature Visualization
+    # Feature Visualization
     st.write("### Feature Visualization")
     col1, col2 = st.columns(2)
     
@@ -206,58 +228,32 @@ if start_training:
 
     metrics_data = {
         "Model": ["ExtraTreesClassifier", "RandomForestClassifier", "SVC", "LogisticRegression", "KNeighborsClassifier"],
-        "Accuracy": [accuracy, 0.89, 0.87, 0.84, 0.83],
+        "Accuracy": [accuracy, 0.89, 0.87, 0.84, 0.83],  # Replace with actual metrics
         "Precision": [0.91, 0.87, 0.85, 0.82, 0.81],
         "Recall": [0.92, 0.88, 0.86, 0.83, 0.80],
         "F1 Score": [0.91, 0.87, 0.85, 0.82, 0.80]
     }
 
     metrics_df = pd.DataFrame(metrics_data)
-    metrics_df.set_index('Model', inplace=True)
 
-    st.write("**Model Performance Metrics Comparison**")
-    st.bar_chart(metrics_df)
+    st.write("#### Accuracy Comparison")
 
-    # Display saved models
-    if "trained_models" in st.session_state:
-        st.write("### Saved Models")
-        
-        saved_models = []
-        for model_name, model in st.session_state["trained_models"].items():
-            accuracy = st.session_state["model_metrics"][model_name]["Accuracy"]
-            saved_models.append([model_name, accuracy])
-        
-        # Create DataFrame after collecting all model names and accuracies
-        saved_models_df = pd.DataFrame(saved_models, columns=["Model", "Accuracy"])
-        
-        st.dataframe(saved_models_df)
-        
-        # Download models in CSV format
-        csv = saved_models_df.to_csv(index=False)
-        st.download_button("Download Models as CSV", data=csv, file_name="saved_models.csv", mime="text/csv")
-        
-        # Learning Curves Display
-        st.write("### Learning Curves for All Models")
-        fig, axes = plt.subplots(2, 3, figsize=(18, 10))
-        axes = axes.flatten()
-        for i, (model_name, curve) in enumerate(learning_curves.items()):
-            axes[i].plot(curve["train_sizes"], curve["train_scores"], label="Train", color='blue')
-            axes[i].plot(curve["train_sizes"], curve["valid_scores"], label="Validation", color='orange')
-            axes[i].set_title(f"Learning Curve: {model_name}")
-            axes[i].set_xlabel('Training Size')
-            axes[i].set_ylabel('Score')
-            axes[i].legend()
-        plt.tight_layout()
-        st.pyplot(fig)
-        
-        # Confusion Matrices Display
-        st.write("### Confusion Matrices for All Models")
-        fig, axes = plt.subplots(2, 3, figsize=(18, 10))
-        axes = axes.flatten()
-        for i, (model_name, cm) in enumerate(confusion_matrices.items()):
-            sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=axes[i], cbar=False)
-            axes[i].set_title(f"Confusion Matrix: {model_name}")
-            axes[i].set_xlabel('Predicted')
-            axes[i].set_ylabel('Actual')
-        plt.tight_layout()
-        st.pyplot(fig)
+    fig, ax = plt.subplots(figsize=(8, 5))
+    sns.barplot(x='Model', y='Accuracy', data=metrics_df, ax=ax)
+    st.pyplot(fig)
+    
+    # Show confusion matrix for ExtraTreesClassifier
+    if "confusion_matrices" in st.session_state:
+        cm = st.session_state["confusion_matrices"].get("ExtraTreesClassifier")
+        if cm is not None:
+            st.write("### Confusion Matrix for ExtraTreesClassifier")
+            fig, ax = plt.subplots()
+            sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=classes, yticklabels=classes)
+            ax.set_xlabel('Predicted')
+            ax.set_ylabel('Actual')
+            st.pyplot(fig)
+    else:
+        st.write("No confusion matrix found for ExtraTreesClassifier.")
+    
+else:
+    st.warning("Click the button in the sidebar to generate data and train the model.")
