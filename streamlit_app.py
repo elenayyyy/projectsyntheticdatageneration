@@ -222,13 +222,24 @@ if start_training:
         saved_models_df = pd.DataFrame(saved_models, columns=["Model", "Accuracy"])
         st.dataframe(saved_models_df)
     
-    # Download models in CSV format
-    # Assuming the models are saved in the session state
+        # Assuming the models are saved in session_state
     if "trained_models" in st.session_state:
         st.write("### Download Models:")
+    
+        # Iterate over each model saved in session_state
         for model_name, model in st.session_state["trained_models"].items():
-            # Serialize the model to a .pkl file
-            model_file = joblib.dumps(model)
+            # Serialize the model to a binary stream using joblib
+            model_file = io.BytesIO()
+            joblib.dump(model, model_file)
+            model_file.seek(0)  # Go to the beginning of the binary stream
+        
+        # Provide a download button for each model
+        st.download_button(
+            label=f"Download {model_name} Model",
+            data=model_file,
+            file_name=f"{model_name}_model.pkl",
+            mime="application/octet-stream"
+        )
             
         # Provide a download button for each model
         st.download_button(
