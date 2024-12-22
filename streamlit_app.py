@@ -34,6 +34,10 @@ else:
     synthetic_data = []
     synthetic_labels = []
 
+    # Define number of samples before using it
+    num_samples = st.sidebar.slider("Number of Samples", min_value=100, max_value=10000, value=1000)
+
+
     # Class-Specific Settings in Sidebar with Selectbox for Low, Medium, High
     st.sidebar.subheader("Class-Specific Settings")
     class_settings = {}
