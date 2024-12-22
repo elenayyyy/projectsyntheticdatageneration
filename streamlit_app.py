@@ -31,7 +31,10 @@ else:
     features = [f.strip() for f in feature_names.split(",")]
     classes = [c.strip() for c in class_names.split(",")]
 
-    # Class-Specific Settings Section
+    synthetic_data = []
+    synthetic_labels = []
+
+    # Class-Specific Settings in Sidebar
     st.sidebar.subheader("Class-Specific Settings")
     class_settings = {}
     for cls in classes:
@@ -42,35 +45,32 @@ else:
             std = st.sidebar.number_input(f"Std Dev for {feature} ({cls})", value=10.0, key=f"{cls}_{feature}_std")
             class_settings[cls][feature] = (mean, std)
 
-    # Generate Synthetic Data
-    synthetic_data = []
-    synthetic_labels = []
-    for cls in classes:
-        params = class_settings[cls]
+        # Generate synthetic data for each class
         for _ in range(num_samples // len(classes)):
-            synthetic_data.append([np.random.normal(params[f][0], params[f][1]) for f in features])
+            synthetic_data.append([np.random.normal(class_settings[cls][f][0], class_settings[cls][f][1]) for f in features])
             synthetic_labels.append(cls)
 
     data = pd.DataFrame(synthetic_data, columns=features)
     data['Class'] = synthetic_labels
-    st.write("### Generated Synthetic Dataset:")
-    st.dataframe(data.head())
+    # Display dataset after generation, will show once the button is clicked
+    display_data = False
 
 # Sample Size & Train/Test Split Configuration
 st.sidebar.header("Sample Size & Train/Test Split Configuration")
 test_size = st.sidebar.slider("Test Size (%)", min_value=10, max_value=50, value=30) / 100.0
-st.sidebar.write("**Test Size:**", f"{int(test_size * 100)}%")
-st.sidebar.write("**Train Size:**", f"{int((1 - test_size) * 100)}%")
 
-# Button to Start Model Training
-if st.sidebar.button("Generate Data and Train Models"):
-    # Data Preprocessing
+# Button for Training the Model
+start_training = st.sidebar.button("Generate Data and Train Models")
+
+# Check if the training button is clicked
+if start_training:
+    # Start generating data and training the model
     X = data[features]
     y = data['Class']
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
 
-    # Train-Test Split
+    # Train/Test Split
     X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=test_size, random_state=42)
 
     # Train a Random Forest Model
@@ -82,57 +82,44 @@ if st.sidebar.button("Generate Data and Train Models"):
     accuracy = accuracy_score(y_test, y_pred)
     report = classification_report(y_test, y_pred, output_dict=True)
 
-    # Output Results
+    # Set the flag to show the dataset and output
+    display_data = True
+
+    # Show Results
     st.write("### Model Performance")
     st.write(f"**Accuracy:** {accuracy:.4f}")
     st.write("**Classification Report:**")
     st.dataframe(pd.DataFrame(report).transpose())
 
-    # Feature Visualization
+    # Visualizations and Feature Plots
     st.write("### Feature Visualization")
-    plot_type = st.selectbox("Select Plot Type:", ["2D Plot", "3D Plot", "Correlation Matrix", "Line Plot"])
+    plot_type = "2D Plot"  # Automatically showing 2D plot for simplicity
 
-    if plot_type == "2D Plot":
-        x_feature = st.selectbox("Select X-axis feature:", features)
-        y_feature = st.selectbox("Select Y-axis feature:", features)
-        fig, ax = plt.subplots()
-        ax.scatter(data[x_feature], data[y_feature], c=data['Class'].map({"Low": "blue", "Medium": "orange", "High": "green"}), alpha=0.7)
-        ax.set_xlabel(x_feature)
-        ax.set_ylabel(y_feature)
-        st.pyplot(fig)
+    # 2D Plot of Features
+    x_feature = features[0]
+    y_feature = features[1]
+    fig, ax = plt.subplots()
+    ax.scatter(data[x_feature], data[y_feature], c=data['Class'].map({"Low": "blue", "Medium": "orange", "High": "green"}), alpha=0.7)
+    ax.set_xlabel(x_feature)
+    ax.set_ylabel(y_feature)
+    st.pyplot(fig)
 
-    elif plot_type == "3D Plot":
-        if len(features) < 3:
-            st.warning("Need at least 3 features for 3D Plot.")
-        else:
-            x_feature = st.selectbox("Select X-axis feature:", features, key="3d_x")
-            y_feature = st.selectbox("Select Y-axis feature:", features, key="3d_y")
-            z_feature = st.selectbox("Select Z-axis feature:", features, key="3d_z")
-            fig = plt.figure()
-            ax = fig.add_subplot(111, projection='3d')
-            ax.scatter(data[x_feature], data[y_feature], data[z_feature], c=data['Class'].map({"Low": "blue", "Medium": "orange", "High": "green"}), alpha=0.7)
-            ax.set_xlabel(x_feature)
-            ax.set_ylabel(y_feature)
-            ax.set_zlabel(z_feature)
-            st.pyplot(fig)
+    # Correlation Matrix
+    st.write("### Correlation Matrix")
+    fig, ax = plt.subplots()
+    sns.heatmap(data[features].corr(), annot=True, cmap='coolwarm', ax=ax)
+    st.pyplot(fig)
 
-    elif plot_type == "Correlation Matrix":
-        fig, ax = plt.subplots()
-        sns.heatmap(data[features].corr(), annot=True, cmap='coolwarm', ax=ax)
-        st.pyplot(fig)
+    # Confusion Matrix
+    st.write("### Confusion Matrix")
+    cm = confusion_matrix(y_test, y_pred)
+    fig, ax = plt.subplots()
+    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", ax=ax)
+    st.pyplot(fig)
 
-    elif plot_type == "Line Plot":
-        fig, ax = plt.subplots()
-        for feature in features:
-            ax.plot(data[feature], label=feature)
-        ax.legend()
-        st.pyplot(fig)
-
-    # Download Options
-    st.write("### Download Options")
-    data_csv = data.to_csv(index=False)
-    st.download_button("Download Dataset", data_csv, "dataset.csv", "text/csv")
-
-    model_file = "trained_model.pkl"
-    joblib.dump(clf, model_file)
-    st.download_button("Download Trained Model", model_file, file_name="trained_model.pkl")
+    # Show Generated Data Sample
+    st.write("### Generated Synthetic Dataset:")
+    st.dataframe(data.head())
+else:
+    # If training not clicked yet, show sample data only
+    st.write("### Prepare and Click on 'Generate Data and Train Models' to start.")
