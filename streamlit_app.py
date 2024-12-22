@@ -66,9 +66,19 @@ st.sidebar.write(f"Test: {test_size * 100}% / Train: {train_size * 100}%")
 # Button for Training the Model
 start_training = st.sidebar.button("Generate Data and Train Models")
 
+# Define models to train (add all your models here)
+models = {
+    "ExtraTreesClassifier": ExtraTreesClassifier(random_state=42),
+    "RandomForestClassifier": RandomForestClassifier(random_state=42),
+    "LogisticRegression": LogisticRegression(random_state=42),
+    "SVC": SVC(random_state=42),
+    "KNeighborsClassifier": KNeighborsClassifier(),
+    # Add more models if needed
+}
+
 # During training, store models and their metrics in session_state
 if start_training:
-    with st.spinner("Training model... Please wait!"):
+    with st.spinner("Training models... Please wait!"):
         # Start generating data and training the model
         X = data[features]
         y = data['Class']
@@ -78,39 +88,41 @@ if start_training:
         # Train/Test Split
         X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=test_size, random_state=42)
 
-        # Define models to train
-        models = {
-            "ExtraTreesClassifier": ExtraTreesClassifier(random_state=42),
-            "RandomForestClassifier": RandomForestClassifier(random_state=42),
-            # Add more models if needed
-        }
-
+        # Loop through models to train them
         for model_name, model in models.items():
-            start_time = time()
-            model.fit(X_train, y_train)  # Train the model
-            training_time = time() - start_time
+            try:
+                start_time = time()
+                model.fit(X_train, y_train)  # Train the model
+                training_time = time() - start_time
 
-            # Save the trained model to session_state
-            if "trained_models" not in st.session_state:
-                st.session_state["trained_models"] = {}
-            st.session_state["trained_models"][model_name] = model
+                # Save the trained model to session_state
+                if "trained_models" not in st.session_state:
+                    st.session_state["trained_models"] = {}
+                st.session_state["trained_models"][model_name] = model
 
-            # Model Evaluation
-            y_pred = model.predict(X_test)
-            accuracy = accuracy_score(y_test, y_pred)
-            class_report = classification_report(y_test, y_pred, output_dict=True)
+                # Model Evaluation
+                y_pred = model.predict(X_test)
+                accuracy = accuracy_score(y_test, y_pred)
+                class_report = classification_report(y_test, y_pred, output_dict=True)
 
-            # Save metrics to session_state
-            if "model_metrics" not in st.session_state:
-                st.session_state["model_metrics"] = {}
-            st.session_state["model_metrics"][model_name] = {
-                "Accuracy": accuracy,
-                "Classification Report": class_report,
-                "Training Time": training_time
-            }
+                # Save metrics to session_state
+                if "model_metrics" not in st.session_state:
+                    st.session_state["model_metrics"] = {}
+                st.session_state["model_metrics"][model_name] = {
+                    "Accuracy": accuracy,
+                    "Classification Report": class_report,
+                    "Training Time": training_time
+                }
 
+                # Debugging: Display saved model and metrics for verification
+                st.write(f"Model {model_name} saved with accuracy: {accuracy}")
+            
+            except Exception as e:
+                st.error(f"Error while training {model_name}: {e}")
+        
         # Now that models are saved, display confirmation
         st.success("Model training completed and models saved!")
+
 
 
 
