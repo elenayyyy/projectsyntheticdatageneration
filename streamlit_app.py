@@ -7,7 +7,7 @@ import joblib
 from time import time
 from sklearn.svm import SVC, LinearSVC
 from sklearn.linear_model import LogisticRegression, RidgeClassifier
-from sklearn.naive_bayes import MultinomialNB
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
@@ -87,6 +87,10 @@ if start_training:
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
 
+    # Scaling features to a non-negative range
+    scaler = MinMaxScaler()
+    X_scaled = scaler.fit_transform(X)
+
     # Train/Test Split
     X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=test_size, random_state=42)
 
@@ -100,7 +104,7 @@ if start_training:
         "LinearSVC": LinearSVC(random_state=42),
         "AdaBoostClassifier": AdaBoostClassifier(random_state=42),
         "RidgeClassifier": RidgeClassifier(),
-        "MultinomialNB": MultinomialNB()
+        "MultinomialNB": MultinomialNB()  # Now works with MinMaxScaler
     }
 
     # Dictionary to store metrics for each model
