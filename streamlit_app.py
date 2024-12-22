@@ -252,29 +252,28 @@ if start_training:
     st.bar_chart(metrics_df)
 
 
-    # Display saved models and metrics
+    # Display saved models
     if "trained_models" in st.session_state and "model_metrics" in st.session_state:
         st.write("### Saved Models")
         
         saved_models = []
         for model_name, model in st.session_state["trained_models"].items():
             if model_name in st.session_state["model_metrics"]:
-                metrics = st.session_state["model_metrics"][model_name]
-                accuracy = metrics.get("Accuracy", "N/A")
-                saved_models.append([model_name, accuracy, metrics])
+                accuracy = st.session_state["model_metrics"][model_name].get("Accuracy", "N/A")
+                saved_models.append([model_name, accuracy])
         
-        # Create DataFrame for display
+        # Create DataFrame for display (without metrics)
         saved_models_df = pd.DataFrame(saved_models, columns=["Model", "Accuracy"])
         
         if not saved_models_df.empty:
             st.dataframe(saved_models_df)
             
-            # CSV for all models' data
+            # CSV for all models' data (model name and accuracy only)
             csv = saved_models_df.to_csv(index=False)
             st.download_button("Download All Models as CSV", data=csv, file_name="saved_models.csv", mime="text/csv")
             
             # Provide download button for individual models
-            for model_name, model, metrics in zip(saved_models_df["Model"], st.session_state["trained_models"].values(), saved_models_df["Metrics"]):
+            for model_name, model in st.session_state["trained_models"].items():
                 # Save the model as a pickle file
                 model_filename = f"{model_name}_model.pkl"
                 with open(model_filename, "wb") as f:
@@ -284,7 +283,8 @@ if start_training:
                 with open(model_filename, "rb") as f:
                     st.download_button(f"Download {model_name} Model", data=f, file_name=model_filename, mime="application/octet-stream")
                 
-                # Convert model metrics to DataFrame for download
+                # Get model metrics and convert to DataFrame for download
+                metrics = st.session_state["model_metrics"].get(model_name, {})
                 metrics_df = pd.DataFrame([metrics])
                 metrics_csv = metrics_df.to_csv(index=False)
                 st.download_button(f"Download {model_name} Metrics", data=metrics_csv, file_name=f"{model_name}_metrics.csv", mime="text/csv")
@@ -292,11 +292,12 @@ if start_training:
             st.write("No models found in the session state.")
     else:
         st.write("No trained models or model metrics found in the session state.")
-       
+    
         
-        # Learning Curves Display
+     #learning curve   
     if "learning_curves" in st.session_state:
         st.write("### Learning Curves for All Models")
+        print(st.session_state["learning_curves"])  # Debugging line
         fig, axes = plt.subplots(2, 3, figsize=(18, 10))
         axes = axes.flatten()
         for i, (model_name, curve) in enumerate(st.session_state["learning_curves"].items()):
@@ -309,9 +310,12 @@ if start_training:
         plt.tight_layout()
         st.pyplot(fig)
     
-    # Confusion Matrices Display
+    else:
+        st.write("No learning curves found in session state.")  # Debugging line
+    
     if "confusion_matrices" in st.session_state:
         st.write("### Confusion Matrices for All Models")
+        print(st.session_state["confusion_matrices"])  # Debugging line
         fig, axes = plt.subplots(2, 3, figsize=(18, 10))
         axes = axes.flatten()
         for i, (model_name, cm) in enumerate(st.session_state["confusion_matrices"].items()):
@@ -321,3 +325,6 @@ if start_training:
             axes[i].set_ylabel('Actual')
         plt.tight_layout()
         st.pyplot(fig)
+    else:
+        st.write("No confusion matrices found in session state.")  # Debugging line
+
