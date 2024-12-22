@@ -218,46 +218,46 @@ if start_training:
     st.write("**Model Performance Metrics Comparison**")
     st.bar_chart(metrics_df)
 
-# Display saved models
-if "trained_models" in st.session_state:
-    st.write("### Saved Models")
-    
-    saved_models = []
-    for model_name, model in st.session_state["trained_models"].items():
-        accuracy = st.session_state["model_metrics"][model_name]["Accuracy"]
-        saved_models.append([model_name, accuracy])
-    
-    # Create DataFrame after collecting all model names and accuracies
-    saved_models_df = pd.DataFrame(saved_models, columns=["Model", "Accuracy"])
-    
-    st.dataframe(saved_models_df)
-    
-    # Download models in CSV format
-    csv = saved_models_df.to_csv(index=False)
-    st.download_button("Download Models as CSV", data=csv, file_name="saved_models.csv", mime="text/csv")
-    
-    # Learning Curves Display
-    st.write("### Learning Curves for All Models")
-    fig, axes = plt.subplots(2, 3, figsize=(18, 10))
-    axes = axes.flatten()
-    for i, (model_name, curve) in enumerate(learning_curves.items()):
-        axes[i].plot(curve["train_sizes"], curve["train_scores"], label="Train", color='blue')
-        axes[i].plot(curve["train_sizes"], curve["valid_scores"], label="Validation", color='orange')
-        axes[i].set_title(f"Learning Curve: {model_name}")
-        axes[i].set_xlabel('Training Size')
-        axes[i].set_ylabel('Score')
-        axes[i].legend()
-    plt.tight_layout()
-    st.pyplot(fig)
-    
-    # Confusion Matrices Display
-    st.write("### Confusion Matrices for All Models")
-    fig, axes = plt.subplots(2, 3, figsize=(18, 10))
-    axes = axes.flatten()
-    for i, (model_name, cm) in enumerate(confusion_matrices.items()):
-        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=axes[i], cbar=False)
-        axes[i].set_title(f"Confusion Matrix: {model_name}")
-        axes[i].set_xlabel('Predicted')
-        axes[i].set_ylabel('Actual')
-    plt.tight_layout()
-    st.pyplot(fig)
+    # Display saved models
+    if "trained_models" in st.session_state:
+        st.write("### Saved Models")
+        
+        saved_models = []
+        for model_name, model in st.session_state["trained_models"].items():
+            accuracy = st.session_state["model_metrics"][model_name]["Accuracy"]
+            saved_models.append([model_name, accuracy])
+        
+        # Create DataFrame after collecting all model names and accuracies
+        saved_models_df = pd.DataFrame(saved_models, columns=["Model", "Accuracy"])
+        
+        st.dataframe(saved_models_df)
+        
+        # Download models in CSV format
+        csv = saved_models_df.to_csv(index=False)
+        st.download_button("Download Models as CSV", data=csv, file_name="saved_models.csv", mime="text/csv")
+        
+        # Learning Curves Display
+        st.write("### Learning Curves for All Models")
+        fig, axes = plt.subplots(2, 3, figsize=(18, 10))
+        axes = axes.flatten()
+        for i, (model_name, curve) in enumerate(learning_curves.items()):
+            axes[i].plot(curve["train_sizes"], curve["train_scores"], label="Train", color='blue')
+            axes[i].plot(curve["train_sizes"], curve["valid_scores"], label="Validation", color='orange')
+            axes[i].set_title(f"Learning Curve: {model_name}")
+            axes[i].set_xlabel('Training Size')
+            axes[i].set_ylabel('Score')
+            axes[i].legend()
+        plt.tight_layout()
+        st.pyplot(fig)
+        
+        # Confusion Matrices Display
+        st.write("### Confusion Matrices for All Models")
+        fig, axes = plt.subplots(2, 3, figsize=(18, 10))
+        axes = axes.flatten()
+        for i, (model_name, cm) in enumerate(confusion_matrices.items()):
+            sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=axes[i], cbar=False)
+            axes[i].set_title(f"Confusion Matrix: {model_name}")
+            axes[i].set_xlabel('Predicted')
+            axes[i].set_ylabel('Actual')
+        plt.tight_layout()
+        st.pyplot(fig)
