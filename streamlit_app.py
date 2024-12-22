@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import joblib
+import io
 from time import time
 from sklearn.svm import SVC, LinearSVC
 from sklearn.linear_model import LogisticRegression, RidgeClassifier
