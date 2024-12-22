@@ -76,7 +76,6 @@ models = {
     "LogisticRegression": LogisticRegression(random_state=42),
     "SVC": SVC(random_state=42),
     "KNeighborsClassifier": KNeighborsClassifier(),
-     Add more models if needed
 }
 
 # During training, store models and their metrics in session_state
