@@ -66,9 +66,8 @@ st.sidebar.write(f"Test: {test_size * 100}% / Train: {train_size * 100}%")
 # Button for Training the Model
 start_training = st.sidebar.button("Generate Data and Train Models")
 
-# Check if the training button is clicked
+# During training, store models and their metrics in session_state
 if start_training:
-    # Show a spinner while the model is being trained
     with st.spinner("Training model... Please wait!"):
         # Start generating data and training the model
         X = data[features]
@@ -79,22 +78,41 @@ if start_training:
         # Train/Test Split
         X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=test_size, random_state=42)
 
-        # Train a Random Forest Model
-        clf = ExtraTreesClassifier(random_state=42)
-        start_time = time()
-        clf.fit(X_train, y_train)
-        training_time = time() - start_time
+        # Define models to train
+        models = {
+            "ExtraTreesClassifier": ExtraTreesClassifier(random_state=42),
+            "RandomForestClassifier": RandomForestClassifier(random_state=42),
+            # Add more models if needed
+        }
 
-        # Model Evaluation
-        y_pred = clf.predict(X_test)
-        accuracy = accuracy_score(y_test, y_pred)
-        report = classification_report(y_test, y_pred, output_dict=True)
+        for model_name, model in models.items():
+            start_time = time()
+            model.fit(X_train, y_train)  # Train the model
+            training_time = time() - start_time
 
-        # Set the flag to show the dataset and output
-        display_data = True
+            # Save the trained model to session_state
+            if "trained_models" not in st.session_state:
+                st.session_state["trained_models"] = {}
+            st.session_state["trained_models"][model_name] = model
 
-    # Once the spinner is done, show the results
-    st.success("Model training completed!")
+            # Model Evaluation
+            y_pred = model.predict(X_test)
+            accuracy = accuracy_score(y_test, y_pred)
+            class_report = classification_report(y_test, y_pred, output_dict=True)
+
+            # Save metrics to session_state
+            if "model_metrics" not in st.session_state:
+                st.session_state["model_metrics"] = {}
+            st.session_state["model_metrics"][model_name] = {
+                "Accuracy": accuracy,
+                "Classification Report": class_report,
+                "Training Time": training_time
+            }
+
+        # Now that models are saved, display confirmation
+        st.success("Model training completed and models saved!")
+
+
 
     # Show Results
     st.write("### Dataset Split Information")
@@ -219,7 +237,7 @@ if start_training:
     st.bar_chart(metrics_df)
 
 
-       # Display saved models
+    # Display saved models
     if "trained_models" in st.session_state and "model_metrics" in st.session_state:
         st.write("### Saved Models")
         
@@ -234,16 +252,15 @@ if start_training:
         
         if not saved_models_df.empty:
             st.dataframe(saved_models_df)
+            
+            # Only attempt to download if there is valid data
+            csv = saved_models_df.to_csv(index=False)
+            st.download_button("Download Models as CSV", data=csv, file_name="saved_models.csv", mime="text/csv")
         else:
             st.write("No models found in the session state.")
     else:
         st.write("No trained models or model metrics found in the session state.")
 
-        
-        # Download models in CSV format
-        csv = saved_models_df.to_csv(index=False)
-        st.download_button("Download Models as CSV", data=csv, file_name="saved_models.csv", mime="text/csv")
-        
         # Learning Curves Display
         st.write("### Learning Curves for All Models")
         fig, axes = plt.subplots(2, 3, figsize=(18, 10))
