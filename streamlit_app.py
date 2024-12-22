@@ -12,6 +12,7 @@ from time import time
 
 # App Title
 st.title("Water Quality Testing Model and Simulation")
+st.info("Generate data using the sidebar button to view visualizations and results.")
 
 # Sidebar for Data Upload or Synthetic Data Generation
 st.sidebar.header("Data Source")
