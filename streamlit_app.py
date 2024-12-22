@@ -1,4 +1,4 @@
-import streamlit a st
+import streamlit as st
 
 # App Title
 st.title('☀️ Solar Power Simulator with Real Data')
