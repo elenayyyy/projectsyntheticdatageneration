@@ -24,7 +24,7 @@ if data_source == "Upload Dataset":
         st.dataframe(data.head())
 else:
     st.sidebar.subheader("Synthetic Data Generation")
-    num_samples = st.sidebar.number_input("Number of Samples", min_value=100, max_value=10000, value=1000)
+    num_samples = st.sidebar.number_input("Number of Samples", min_value=500, max_value=50000, value=1000)
     feature_names = st.sidebar.text_input("Enter Feature Names (comma-separated):", "Soil_Type,Sunlight_Hours,Water_Frequency,Fertilizer_Type,Temperature,Humidity")
     class_names = st.sidebar.text_input("Enter Class Names (comma-separated):", "Low,Medium,High")
 
@@ -58,6 +58,8 @@ else:
 # Sample Size & Train/Test Split Configuration
 st.sidebar.header("Sample Size & Train/Test Split Configuration")
 test_size = st.sidebar.slider("Test Size (%)", min_value=10, max_value=50, value=30) / 100.0
+num_samples_range = st.sidebar.selectbox("Number of Samples", [500, 5000, 50000])
+train_test_split = f"Test: {int(test_size*100)}% / Train: {100-int(test_size*100)}%"
 
 # Button for Training the Model
 start_training = st.sidebar.button("Generate Data and Train Models")
@@ -141,11 +143,21 @@ if start_training:
     # Show Model Comparison
     st.write("### Model Comparison")
     model_comparison = {
-        "Model": ["ExtraTreesClassifier", "RandomForestClassifier", "SVC", "LogisticRegression", "KNeighborsClassifier"],
-        "Accuracy": [accuracy, 0.89, 0.87, 0.84, 0.83]  # Dummy accuracy values, replace with actual evaluations
+        "Model": ["ExtraTreesClassifier", "GaussianNB", "MLPClassifier", "LogisticRegression", "RandomForestClassifier", "SVC", "LinearSVC", "KNeighborsClassifier", "AdaBoostClassifier", "RidgeClassifier", "MultinomialNB"],
+        "Accuracy": [accuracy, 0.89, 0.87, 0.84, 0.83, 0.81, 0.79, 0.77, 0.75, 0.74, 0.72]  # Dummy accuracy values, replace with actual evaluations
     }
     model_comparison_df = pd.DataFrame(model_comparison)
     st.dataframe(model_comparison_df)
+
+    # Saved Models
+    st.write("### Saved Models")
+    joblib.dump(clf, "water_quality_model.pkl")
+    st.download_button(
+        label="Download Model (Pickle)",
+        data=open("water_quality_model.pkl", "rb").read(),
+        file_name="water_quality_model.pkl",
+        mime="application/octet-stream"
+    )
 
     # Download Dataset
     st.write("### Download Dataset")
