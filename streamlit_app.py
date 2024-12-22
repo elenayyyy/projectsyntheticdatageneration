@@ -310,9 +310,8 @@ if start_training:
     else:
         st.write("No trained models or model metrics found in the session state.")
     
-        
-# Learning Curves Display
-if "learning_curves" in st.session_state:
+#Learning Curves        
+if "learning_curves" in st.session_state and st.session_state["learning_curves"]:
     st.write("### Learning Curves for All Models")
     fig, axes = plt.subplots(2, 3, figsize=(18, 10))
     axes = axes.flatten()
@@ -325,9 +324,11 @@ if "learning_curves" in st.session_state:
         axes[i].legend()
     plt.tight_layout()
     st.pyplot(fig)
+else:
+    st.write("No learning curve data available.")
 
-# Confusion Matrices Display
-if "confusion_matrices" in st.session_state:
+#Confusion Matrix
+if "confusion_matrices" in st.session_state and st.session_state["confusion_matrices"]:
     st.write("### Confusion Matrices for All Models")
     fig, axes = plt.subplots(2, 3, figsize=(18, 10))
     axes = axes.flatten()
@@ -338,3 +339,6 @@ if "confusion_matrices" in st.session_state:
         axes[i].set_ylabel('Actual')
     plt.tight_layout()
     st.pyplot(fig)
+else:
+    st.write("No confusion matrix data available.")
+
