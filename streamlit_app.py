@@ -19,7 +19,7 @@ from sklearn.metrics import classification_report, confusion_matrix, accuracy_sc
 
 
 # App Title
-st.title("Water Quality Testing Generator")
+st.title("💧Water Quality Generatorion")
 st.info("Generate data using the sidebar button to view visualizations and results.")
 
 # Sidebar for Data Upload or Synthetic Data Generation
