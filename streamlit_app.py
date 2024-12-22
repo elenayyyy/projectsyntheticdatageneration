@@ -219,19 +219,26 @@ if start_training:
     st.bar_chart(metrics_df)
 
 
-    # Display saved models
-    if "trained_models" in st.session_state:
+       # Display saved models
+    if "trained_models" in st.session_state and "model_metrics" in st.session_state:
         st.write("### Saved Models")
         
         saved_models = []
         for model_name, model in st.session_state["trained_models"].items():
-            accuracy = st.session_state["model_metrics"][model_name]["Accuracy"]
-            saved_models.append([model_name, accuracy])
+            if model_name in st.session_state["model_metrics"]:
+                accuracy = st.session_state["model_metrics"][model_name].get("Accuracy", "N/A")
+                saved_models.append([model_name, accuracy])
         
         # Create DataFrame after collecting all model names and accuracies
         saved_models_df = pd.DataFrame(saved_models, columns=["Model", "Accuracy"])
         
-        st.dataframe(saved_models_df)
+        if not saved_models_df.empty:
+            st.dataframe(saved_models_df)
+        else:
+            st.write("No models found in the session state.")
+    else:
+        st.write("No trained models or model metrics found in the session state.")
+
         
         # Download models in CSV format
         csv = saved_models_df.to_csv(index=False)
