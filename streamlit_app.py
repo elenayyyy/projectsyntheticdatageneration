@@ -1,7 +1,7 @@
 import streamlit as st
 
 # App Title
-st.title('☀️ Solar Power Simulator with Real Data')
+st.title('☀️ Solar Power Generation')
 
 st.write("""
 This app uses a real-world dataset to analyze and model solar power generation.  
