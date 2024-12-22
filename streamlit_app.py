@@ -165,7 +165,7 @@ if "trained_models" in st.session_state:
     st.download_button("Download Models as CSV", data=csv, file_name="saved_models.csv", mime="text/csv")
 
 # Learning Curves
-if "trained_models" in st.session_state:
+if "trained_models" in st.session_state and 'X_train' in locals():
     st.write("### Learning Curves")
     for model_name, model in st.session_state["trained_models"].items():
         # Plotting learning curves
