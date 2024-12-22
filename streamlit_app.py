@@ -132,7 +132,7 @@ if start_training:
         st.dataframe(data.head())
         st.dataframe(pd.DataFrame(X_scaled[:5], columns=features))
 
-if "model_metrics" in st.session_state and st.session_state["model_metrics"] is not None:
+if "model_metrics" in st.session_state:
     st.write("### Performance Metrics Summary")
     selected_models = st.multiselect("Select models to compare", list(st.session_state["model_metrics"].keys()))
 
@@ -149,8 +149,20 @@ if "model_metrics" in st.session_state and st.session_state["model_metrics"] is 
         metrics_df = pd.DataFrame(metrics_data)
         metrics_df.set_index('Model', inplace=True)
         st.bar_chart(metrics_df)
-else:
-    st.warning("No model metrics available. Please generate and train models first.")
+
+# Display saved models
+if "trained_models" in st.session_state:
+    st.write("### Saved Models")
+    saved_models = []
+    for model_name, model in st.session_state["trained_models"].items():
+        accuracy = st.session_state["model_metrics"][model_name]["Accuracy"]
+        saved_models.append([model_name, accuracy])
+    saved_models_df = pd.DataFrame(saved_models, columns=["Model", "Accuracy"])
+    st.dataframe(saved_models_df)
+
+    # Download models in CSV format
+    csv = saved_models_df.to_csv(index=False)
+    st.download_button("Download Models as CSV", data=csv, file_name="saved_models.csv", mime="text/csv")
 
 # Learning Curves
 if "trained_models" in st.session_state:
