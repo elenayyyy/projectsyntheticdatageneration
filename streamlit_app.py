@@ -108,9 +108,9 @@ if start_training:
 
     # Train each model and store metrics
     for model_name, model in models.items():
-    start_time = time()
-    model.fit(X_train, y_train)  # Train the model
-    training_time = time() - start_time
+        start_time = time()
+        model.fit(X_train, y_train)  # Train the model
+        training_time = time() - start_time
 
     # Predict on test data
     y_pred = model.predict(X_test)
