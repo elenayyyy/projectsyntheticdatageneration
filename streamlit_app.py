@@ -60,7 +60,7 @@ else:
     display_data = False
 
 # Sample Size & Train/Test Split Configuration with Test Size Slider
-num_samples = st.sidebar.slider("Number of Samples", min_value=100, max_value=10000, value=1000)
+#num_samples = st.sidebar.slider("Number of Samples", min_value=100, max_value=10000, value=1000)
 st.sidebar.header("Sample Size & Train/Test Split Configuration")
 
 # Test size slider, as percentage
