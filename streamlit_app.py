@@ -14,7 +14,7 @@ import joblib
 from time import time
 
 # App Title
-st.title("Water Quality Testing Model and Simulation")
+st.title("Water Quality Testing Generator")
 st.info("Generate data using the sidebar button to view visualizations and results.")
 
 # Sidebar for Data Upload or Synthetic Data Generation
@@ -251,35 +251,54 @@ if start_training:
     st.bar_chart(metrics_df)
 
 
-    # Display saved models
+    # Display saved models and metrics
     if "trained_models" in st.session_state and "model_metrics" in st.session_state:
         st.write("### Saved Models")
         
         saved_models = []
         for model_name, model in st.session_state["trained_models"].items():
             if model_name in st.session_state["model_metrics"]:
-                accuracy = st.session_state["model_metrics"][model_name].get("Accuracy", "N/A")
-                saved_models.append([model_name, accuracy])
+                metrics = st.session_state["model_metrics"][model_name]
+                accuracy = metrics.get("Accuracy", "N/A")
+                saved_models.append([model_name, accuracy, metrics])
         
-        # Create DataFrame after collecting all model names and accuracies
-        saved_models_df = pd.DataFrame(saved_models, columns=["Model", "Accuracy"])
+        # Create DataFrame for display
+        saved_models_df = pd.DataFrame(saved_models, columns=["Model", "Accuracy", "Metrics"])
         
         if not saved_models_df.empty:
             st.dataframe(saved_models_df)
             
-            # Only attempt to download if there is valid data
+            # CSV for all models' data
             csv = saved_models_df.to_csv(index=False)
-            st.download_button("Download Models as CSV", data=csv, file_name="saved_models.csv", mime="text/csv")
+            st.download_button("Download All Models as CSV", data=csv, file_name="saved_models.csv", mime="text/csv")
+            
+            # Provide download button for individual models
+            for model_name, model, metrics in zip(saved_models_df["Model"], st.session_state["trained_models"].values(), saved_models_df["Metrics"]):
+                # Save the model as a pickle file
+                model_filename = f"{model_name}_model.pkl"
+                with open(model_filename, "wb") as f:
+                    pickle.dump(model, f)
+                
+                # Provide download button for each model
+                with open(model_filename, "rb") as f:
+                    st.download_button(f"Download {model_name} Model", data=f, file_name=model_filename, mime="application/octet-stream")
+                
+                # Convert model metrics to DataFrame for download
+                metrics_df = pd.DataFrame([metrics])
+                metrics_csv = metrics_df.to_csv(index=False)
+                st.download_button(f"Download {model_name} Metrics", data=metrics_csv, file_name=f"{model_name}_metrics.csv", mime="text/csv")
         else:
             st.write("No models found in the session state.")
     else:
         st.write("No trained models or model metrics found in the session state.")
-
+       
+        
         # Learning Curves Display
+    if "learning_curves" in st.session_state:
         st.write("### Learning Curves for All Models")
         fig, axes = plt.subplots(2, 3, figsize=(18, 10))
         axes = axes.flatten()
-        for i, (model_name, curve) in enumerate(learning_curves.items()):
+        for i, (model_name, curve) in enumerate(st.session_state["learning_curves"].items()):
             axes[i].plot(curve["train_sizes"], curve["train_scores"], label="Train", color='blue')
             axes[i].plot(curve["train_sizes"], curve["valid_scores"], label="Validation", color='orange')
             axes[i].set_title(f"Learning Curve: {model_name}")
@@ -288,12 +307,13 @@ if start_training:
             axes[i].legend()
         plt.tight_layout()
         st.pyplot(fig)
-        
-        # Confusion Matrices Display
+    
+    # Confusion Matrices Display
+    if "confusion_matrices" in st.session_state:
         st.write("### Confusion Matrices for All Models")
         fig, axes = plt.subplots(2, 3, figsize=(18, 10))
         axes = axes.flatten()
-        for i, (model_name, cm) in enumerate(confusion_matrices.items()):
+        for i, (model_name, cm) in enumerate(st.session_state["confusion_matrices"].items()):
             sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=axes[i], cbar=False)
             axes[i].set_title(f"Confusion Matrix: {model_name}")
             axes[i].set_xlabel('Predicted')
