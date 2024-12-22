@@ -164,6 +164,22 @@ if start_training:
     st.write(f"**Best Model:** ExtraTreesClassifier")
     st.write(f"**Accuracy:** {accuracy:.4f}")
     st.write(f"**Training Time:** {training_time:.2f} seconds")
+    
+    # Classification Report (Best Model)
+    st.write("**Classification Report (Best Model):**")
+    
+    # Extract classification report
+    class_report = classification_report(y_test, y_pred, output_dict=True)
+    
+    # Convert to a DataFrame for better visualization
+    class_report_df = pd.DataFrame(class_report).transpose()
+    
+    # Only show the rows corresponding to the classes (excluding 'accuracy', 'macro avg', 'weighted avg')
+    class_report_df = class_report_df.drop(index=['accuracy', 'macro avg', 'weighted avg'])
+    
+    # Display the table
+    st.dataframe(class_report_df[['precision', 'recall', 'f1-score', 'support']])
+
 
     # Model Comparison
     st.write("### Model Comparison")
@@ -174,7 +190,7 @@ if start_training:
         "Recall": [0.92, 0.88, 0.86, 0.83, 0.80],  # Example recall values
         "F1 Score": [0.91, 0.87, 0.85, 0.82, 0.80],  # Example f1 score values
         "Training Time (s)": [training_time, 1.2, 1.3, 1.1, 1.0],  # Example training times
-        "Status": ["Trained", "Trained", "Trained", "Trained", "Trained"]
+        "Status": ["Success", "Success", "Success", "Success", "Success"]
     }
     model_comparison_df = pd.DataFrame(model_comparison)
     st.dataframe(model_comparison_df)
