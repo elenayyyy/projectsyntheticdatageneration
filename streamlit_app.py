@@ -63,6 +63,9 @@ test_size = st.sidebar.slider("Test Size (%)", min_value=10, max_value=50, value
 train_size = 1 - test_size
 st.sidebar.write(f"Test: {test_size * 100}% / Train: {train_size * 100}%")
 
+# Button for Training the Model
+start_training = st.sidebar.button("Generate Data and Train Models")
+
 # Check if the training button is clicked
 if start_training:
     # Show a spinner while the model is being trained
