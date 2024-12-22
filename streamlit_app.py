@@ -1,95 +1,131 @@
-import numpy as np
+import streamlit as st
 import pandas as pd
+import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import classification_report, accuracy_score, confusion_matrix
+from sklearn.svm import SVC
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# Generating synthetic data based on given settings
-def generate_synthetic_data(samples=10000):
-    # Define feature means and std deviations for each class/feature
-    data = []
-    for _ in range(samples):
-        # Soil_Type
-        soil_type = np.random.choice(['Loamy', 'Sandy', 'Clay'])
-        
-        # Sunlight Hours
-        sunlight_hours = np.random.normal(8, 1)
-        
-        # Water Frequency (days)
-        water_frequency = np.random.normal(5, 2)
-        
-        # Temperature (°C)
-        temperature = np.random.normal(25, 2)
-        
-        # Humidity (%)
-        humidity = np.random.normal(75, 5)
-        
-        # Growth Milestone (target label: Seedling, Early Growth, Mature Plant)
-        growth_milestone = np.random.choice([0, 0.4, 0.8])  # 0: Seedling, 0.4: Early Growth, 0.8: Mature
-        
-        # Collect the row of data
-        row = [soil_type, sunlight_hours, water_frequency, temperature, humidity, growth_milestone]
-        data.append(row)
+# Synthetic Data Generation Function
+def generate_synthetic_data(sample_size):
+    # Generating synthetic features
+    np.random.seed(42)
+    soil_type = np.random.choice(['Loamy', 'Sandy', 'Clay'], size=sample_size)
+    sunlight_hours = np.random.normal(loc=8, scale=1, size=sample_size)
+    water_frequency = np.random.normal(loc=5, scale=2, size=sample_size)
+    temperature = np.random.normal(loc=25, scale=2, size=sample_size)
+    humidity = np.random.normal(loc=75, scale=5, size=sample_size)
     
-    # Convert to DataFrame
-    df = pd.DataFrame(data, columns=['Soil_Type', 'Sunlight_Hours', 'Water_Frequency', 'Temperature', 'Humidity', 'Growth_Milestone'])
-    return df
+    # Generating synthetic growth milestones (as target labels)
+    growth_milestone = np.random.choice([0.0, 0.1, 0.8], size=sample_size)  # 0.0 = Seedling, 0.1 = Early Growth, 0.8 = Mature Plant
+    
+    # Creating DataFrame
+    data = pd.DataFrame({
+        'Soil_Type': soil_type,
+        'Sunlight_Hours': sunlight_hours,
+        'Water_Frequency': water_frequency,
+        'Temperature': temperature,
+        'Humidity': humidity,
+        'Growth_Milestone': growth_milestone
+    })
+    
+    return data
 
-# Load or generate synthetic dataset
-df = generate_synthetic_data(10000)
+# Load and preprocess the data
+def preprocess_data(data):
+    # Convert categorical feature 'Soil_Type' into numeric values
+    data['Soil_Type'] = data['Soil_Type'].map({'Loamy': 1, 'Sandy': 2, 'Clay': 3})
+    
+    # Features and target variable
+    X = data.drop('Growth_Milestone', axis=1)
+    y = data['Growth_Milestone']
+    
+    # Split data into train and test sets
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+    
+    # Standardize the data
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+    
+    return X_train_scaled, X_test_scaled, y_train, y_test, scaler
 
-# Prepare features and labels
-X = df.drop(columns='Growth_Milestone')
-y = df['Growth_Milestone']
+# Train the model
+def train_model(X_train, y_train):
+    # Train a Random Forest Classifier
+    model = RandomForestClassifier(n_estimators=100, random_state=42)
+    model.fit(X_train, y_train)
+    
+    return model
 
-# Convert categorical 'Soil_Type' to numerical
-X = pd.get_dummies(X, columns=['Soil_Type'], drop_first=True)
+# Evaluate the model
+def evaluate_model(model, X_test, y_test):
+    y_pred = model.predict(X_test)
+    accuracy = accuracy_score(y_test, y_pred)
+    report = classification_report(y_test, y_pred)
+    cm = confusion_matrix(y_test, y_pred)
+    
+    return accuracy, report, cm
 
-# Split the data into training and test sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+# Visualize Confusion Matrix
+def plot_confusion_matrix(cm):
+    plt.figure(figsize=(8,6))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=['Seedling', 'Early Growth', 'Mature Plant'], yticklabels=['Seedling', 'Early Growth', 'Mature Plant'])
+    plt.ylabel('Actual')
+    plt.xlabel('Predicted')
+    st.pyplot()
 
-# Normalize the feature data
-scaler = StandardScaler()
-X_train_scaled = scaler.fit_transform(X_train)
-X_test_scaled = scaler.transform(X_test)
+# Streamlit App UI
+st.title("Water Quality Testing - Plant Growth Milestone Prediction")
 
-# Initialize the model (Random Forest)
-model = RandomForestClassifier(n_estimators=100, random_state=42)
-model.fit(X_train_scaled, y_train)
+# Sidebar Configuration
+st.sidebar.header("Data Source")
+data_source = st.sidebar.selectbox("Choose Data Source", ["Generate Synthetic Data", "Upload Dataset"])
 
-# Model performance on the test data
-y_pred = model.predict(X_test_scaled)
-accuracy = accuracy_score(y_test, y_pred)
-print(f"Accuracy: {accuracy:.4f}")
-print("\nClassification Report:\n", classification_report(y_test, y_pred))
+if data_source == "Generate Synthetic Data":
+    sample_size = st.sidebar.slider("Number of samples", 1000, 10000, 5000)
+    data = generate_synthetic_data(sample_size)
+    st.write(f"Generated Synthetic Data Sample ({sample_size} samples):")
+    st.dataframe(data.head())
 
-# Confusion Matrix
-conf_matrix = confusion_matrix(y_test, y_pred)
-plt.figure(figsize=(8, 6))
-sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues', xticklabels=['Seedling', 'Early Growth', 'Mature'], yticklabels=['Seedling', 'Early Growth', 'Mature'])
-plt.xlabel('Predicted')
-plt.ylabel('Actual')
-plt.title('Confusion Matrix')
-plt.show()
+    # Model Training and Evaluation
+    if st.sidebar.button("Train Model"):
+        X_train, X_test, y_train, y_test, scaler = preprocess_data(data)
+        model = train_model(X_train, y_train)
+        accuracy, report, cm = evaluate_model(model, X_test, y_test)
+        
+        st.write(f"Model Accuracy: {accuracy:.4f}")
+        st.text("Classification Report:")
+        st.text(report)
+        
+        st.write("Confusion Matrix:")
+        plot_confusion_matrix(cm)
 
-# Plot Learning Curves (Training vs Cross-validation scores)
-train_sizes = [1, 2, 3, 4, 5]  # Example train sizes, modify as needed
-train_scores = [model.score(X_train_scaled[:i], y_train[:i]) for i in train_sizes]
-cv_scores = [model.score(X_test_scaled[:i], y_test[:i]) for i in train_sizes]
+elif data_source == "Upload Dataset":
+    uploaded_file = st.sidebar.file_uploader("Upload your CSV file", type=["csv"])
+    if uploaded_file is not None:
+        data = pd.read_csv(uploaded_file)
+        st.write("Uploaded Data Sample:")
+        st.dataframe(data.head())
 
-plt.figure(figsize=(8, 6))
-plt.plot(train_sizes, train_scores, label='Training score', color='blue')
-plt.plot(train_sizes, cv_scores, label='Cross-validation score', color='orange')
-plt.fill_between(train_sizes, train_scores, cv_scores, color='lightgray', alpha=0.5)
-plt.title('Learning Curves')
-plt.xlabel('Number of Training Samples')
-plt.ylabel('Score')
-plt.legend()
-plt.show()
+        # Preprocessing and Model Training
+        if st.sidebar.button("Train Model"):
+            X_train, X_test, y_train, y_test, scaler = preprocess_data(data)
+            model = train_model(X_train, y_train)
+            accuracy, report, cm = evaluate_model(model, X_test, y_test)
+            
+            st.write(f"Model Accuracy: {accuracy:.4f}")
+            st.text("Classification Report:")
+            st.text(report)
+            
+            st.write("Confusion Matrix:")
+            plot_confusion_matrix(cm)
 
-# Save the model
-import joblib
-joblib.dump(model, 'random_forest_model.pkl')
+# Learning Curves (Optional, if desired)
+st.sidebar.header("Learning Curves")
+# If you have learning curves logic, you can include the code here to plot the learning curves.
+
