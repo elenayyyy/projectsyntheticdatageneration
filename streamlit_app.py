@@ -8,6 +8,7 @@ from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 import seaborn as sns
 import joblib
+import io
 from time import time
 
 # App Title
@@ -182,7 +183,6 @@ if start_training:
 
     # Saved Models
     st.write("### Saved Models")
-    st.write("Models used for comparison, ranked by accuracy:")
 
     # Saved Models download buttons
     st.write("Download Models:")
