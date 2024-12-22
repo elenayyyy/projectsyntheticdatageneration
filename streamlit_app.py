@@ -106,35 +106,26 @@ if start_training:
     st.write("**Scaled Data (using best model's scaler):**")
     st.dataframe(pd.DataFrame(X_scaled[:5], columns=features))
 
-    # Feature Visualization (User can decide whether to display 2D or 3D plot)
+        # Feature Visualization
     st.write("### Feature Visualization")
-    plot_type = st.selectbox("Choose Plot Type", ["2D", "3D"])
-    
-    # Allow users to choose which features to plot for 2D and 3D visualization
-    feature_x = st.selectbox("Select X-axis Feature", features)
-    feature_y = st.selectbox("Select Y-axis Feature", features)
-    feature_z = None
-    if plot_type == "3D":
-        feature_z = st.selectbox("Select Z-axis Feature", features)
+    col1, col2 = st.columns(2)
     
     # 2D Plot
-    if plot_type == "2D":
-        st.write("**2D Plot** (X vs Y)")
+    with col1:
         fig, ax = plt.subplots()
-        ax.scatter(data[feature_x], data[feature_y], c=data['Class'].map({"Low": "blue", "Medium": "orange", "High": "green"}), alpha=0.7)
-        ax.set_xlabel(feature_x)
-        ax.set_ylabel(feature_y)
+        ax.scatter(data[features[0]], data[features[1]], c=data['Class'].map({"Low": "blue", "Medium": "orange", "High": "green"}), alpha=0.7)
+        ax.set_xlabel(features[0])
+        ax.set_ylabel(features[1])
         st.pyplot(fig)
     
     # 3D Plot
-    elif plot_type == "3D" and feature_z:
-        st.write("**3D Plot** (X vs Y vs Z)")
+    with col2:
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
-        ax.scatter(data[feature_x], data[feature_y], data[feature_z], c=data['Class'].map({"Low": "blue", "Medium": "orange", "High": "green"}))
-        ax.set_xlabel(feature_x)
-        ax.set_ylabel(feature_y)
-        ax.set_zlabel(feature_z)
+        ax.scatter(data[features[0]], data[features[1]], data[features[2]], c=data['Class'].map({"Low": "blue", "Medium": "orange", "High": "green"}))
+        ax.set_xlabel(features[0])
+        ax.set_ylabel(features[1])
+        ax.set_zlabel(features[2])
         st.pyplot(fig)
 
     # Download Dataset
