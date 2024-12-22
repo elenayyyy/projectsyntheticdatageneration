@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import joblib
 from time import time
+from sklearn.preprocessing import LabelEncoder
 
 # App Title
 st.title("Water Quality Testing Generator")
@@ -22,13 +23,25 @@ st.info("Generate data using the sidebar button to view visualizations and resul
 st.sidebar.header("Data Source")
 data_source = st.sidebar.radio("Choose Data Source:", ["Generate Synthetic Data", "Upload Dataset"])
 
+# Inside the "Upload Dataset" section, you can load the water quality data
 if data_source == "Upload Dataset":
     uploaded_file = st.sidebar.file_uploader("Upload your CSV file:", type="csv")
     if uploaded_file is not None:
+        # Load the dataset
         data = pd.read_csv(uploaded_file)
+        
+        # Display the dataset preview
         st.write("### Uploaded Dataset:")
         st.dataframe(data.head())
+
+        # Ensure necessary columns are present in the dataset
+        required_columns = ['Soil_Type', 'Sunlight_Hours', 'Water_Frequency', 'Fertilizer_Type', 'Temperature', 'Humidity', 'Growth_Milestone']
+        if all(col in data.columns for col in required_columns):
+            st.success("Dataset is valid!")
+        else:
+            st.error(f"Dataset must contain the following columns: {', '.join(required_columns)}")
 else:
+    # Synthetic data generation (if no file is uploaded)
     st.sidebar.subheader("Synthetic Data Generation")
     num_samples = st.sidebar.slider("Number of Samples", min_value=100, max_value=10000, value=1000)
     feature_names = st.sidebar.text_input("Enter Feature Names (comma-separated):", "Soil_Type,Sunlight_Hours,Water_Frequency,Fertilizer_Type,Temperature,Humidity")
@@ -58,7 +71,6 @@ else:
 
     data = pd.DataFrame(synthetic_data, columns=features)
     data['Class'] = synthetic_labels
-    # Display dataset after generation, will show once the button is clicked
     display_data = False
 
 # Sample Size & Train/Test Split Configuration with Test Size Slider
@@ -82,9 +94,16 @@ models = {
 # During training, store models and their metrics in session_state
 if start_training:
     with st.spinner("Training models... Please wait!"):
-        # Start generating data and training the model
+        # Use the uploaded or synthetic dataset for training
         X = data[features]
         y = data['Class']
+
+        # Encode categorical features if necessary (e.g., 'Soil_Type', 'Fertilizer_Type')
+        for feature in ['Soil_Type', 'Fertilizer_Type']:
+            le = LabelEncoder()
+            X[feature] = le.fit_transform(X[feature])
+
+        # Feature Scaling
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(X)
 
@@ -117,14 +136,12 @@ if start_training:
                     "Training Time": training_time
                 }
 
-                # Debugging: Display saved model and metrics for verification
-               # st.write(f"Model {model_name} saved with accuracy: {accuracy}")
-            
             except Exception as e:
                 st.error(f"Error while training {model_name}: {e}")
-        
+
         # Now that models are saved, display confirmation
         st.success("Model training completed and models saved!")
+
 
 
 
@@ -294,37 +311,30 @@ if start_training:
         st.write("No trained models or model metrics found in the session state.")
     
         
-     #learning curve   
-    if "learning_curves" in st.session_state:
-        st.write("### Learning Curves for All Models")
-        print(st.session_state["learning_curves"])  # Debugging line
-        fig, axes = plt.subplots(2, 3, figsize=(18, 10))
-        axes = axes.flatten()
-        for i, (model_name, curve) in enumerate(st.session_state["learning_curves"].items()):
-            axes[i].plot(curve["train_sizes"], curve["train_scores"], label="Train", color='blue')
-            axes[i].plot(curve["train_sizes"], curve["valid_scores"], label="Validation", color='orange')
-            axes[i].set_title(f"Learning Curve: {model_name}")
-            axes[i].set_xlabel('Training Size')
-            axes[i].set_ylabel('Score')
-            axes[i].legend()
-        plt.tight_layout()
-        st.pyplot(fig)
-    
-    else:
-        st.write("No learning curves found in session state.")  # Debugging line
-    
-    if "confusion_matrices" in st.session_state:
-        st.write("### Confusion Matrices for All Models")
-        print(st.session_state["confusion_matrices"])  # Debugging line
-        fig, axes = plt.subplots(2, 3, figsize=(18, 10))
-        axes = axes.flatten()
-        for i, (model_name, cm) in enumerate(st.session_state["confusion_matrices"].items()):
-            sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=axes[i], cbar=False)
-            axes[i].set_title(f"Confusion Matrix: {model_name}")
-            axes[i].set_xlabel('Predicted')
-            axes[i].set_ylabel('Actual')
-        plt.tight_layout()
-        st.pyplot(fig)
-    else:
-        st.write("No confusion matrices found in session state.")  # Debugging line
+# Learning Curves Display
+if "learning_curves" in st.session_state:
+    st.write("### Learning Curves for All Models")
+    fig, axes = plt.subplots(2, 3, figsize=(18, 10))
+    axes = axes.flatten()
+    for i, (model_name, curve) in enumerate(st.session_state["learning_curves"].items()):
+        axes[i].plot(curve["train_sizes"], curve["train_scores"], label="Train", color='blue')
+        axes[i].plot(curve["train_sizes"], curve["valid_scores"], label="Validation", color='orange')
+        axes[i].set_title(f"Learning Curve: {model_name}")
+        axes[i].set_xlabel('Training Size')
+        axes[i].set_ylabel('Score')
+        axes[i].legend()
+    plt.tight_layout()
+    st.pyplot(fig)
 
+# Confusion Matrices Display
+if "confusion_matrices" in st.session_state:
+    st.write("### Confusion Matrices for All Models")
+    fig, axes = plt.subplots(2, 3, figsize=(18, 10))
+    axes = axes.flatten()
+    for i, (model_name, cm) in enumerate(st.session_state["confusion_matrices"].items()):
+        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=axes[i], cbar=False)
+        axes[i].set_title(f"Confusion Matrix: {model_name}")
+        axes[i].set_xlabel('Predicted')
+        axes[i].set_ylabel('Actual')
+    plt.tight_layout()
+    st.pyplot(fig)
