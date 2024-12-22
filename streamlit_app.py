@@ -35,16 +35,16 @@ else:
     synthetic_labels = []
 
     for cls in classes:
-        st.sidebar.subheader(f"{cls} Settings")
-        params = {}
-        for feature in features:
-            mean = st.sidebar.number_input(f"Mean for {feature} ({cls})", value=50.0, key=f"{cls}_{feature}_mean")
-            std = st.sidebar.number_input(f"Std Dev for {feature} ({cls})", value=10.0, key=f"{cls}_{feature}_std")
-            params[feature] = (mean, std)
+        with st.sidebar.expander(f"{cls} Settings"):
+            params = {}
+            for feature in features:
+                mean = st.sidebar.number_input(f"Mean for {feature} ({cls})", value=50.0, key=f"{cls}_{feature}_mean")
+                std = st.sidebar.number_input(f"Std Dev for {feature} ({cls})", value=10.0, key=f"{cls}_{feature}_std")
+                params[feature] = (mean, std)
 
-        for _ in range(num_samples // len(classes)):
-            synthetic_data.append([np.random.normal(params[f][0], params[f][1]) for f in features])
-            synthetic_labels.append(cls)
+            for _ in range(num_samples // len(classes)):
+                synthetic_data.append([np.random.normal(params[f][0], params[f][1]) for f in features])
+                synthetic_labels.append(cls)
 
     data = pd.DataFrame(synthetic_data, columns=features)
     data['Class'] = synthetic_labels
