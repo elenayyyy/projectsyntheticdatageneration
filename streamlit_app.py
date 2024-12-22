@@ -215,18 +215,21 @@ if start_training:
 # Display saved models
 if "trained_models" in st.session_state:
     st.write("### Saved Models")
+    
     saved_models = []
     for model_name, model in st.session_state["trained_models"].items():
         accuracy = st.session_state["model_metrics"][model_name]["Accuracy"]
         saved_models.append([model_name, accuracy])
-        saved_models_df = pd.DataFrame(saved_models, columns=["Model", "Accuracy"])
+    
+    # Create DataFrame after collecting all model names and accuracies
+    saved_models_df = pd.DataFrame(saved_models, columns=["Model", "Accuracy"])
+    
     st.dataframe(saved_models_df)
     
     # Download models in CSV format
     csv = saved_models_df.to_csv(index=False)
     st.download_button("Download Models as CSV", data=csv, file_name="saved_models.csv", mime="text/csv")
     
-        
     # Learning Curves Display
     st.write("### Learning Curves for All Models")
     fig, axes = plt.subplots(2, 3, figsize=(18, 10))
@@ -241,7 +244,7 @@ if "trained_models" in st.session_state:
     plt.tight_layout()
     st.pyplot(fig)
     
- # Confusion Matrices Display
+    # Confusion Matrices Display
     st.write("### Confusion Matrices for All Models")
     fig, axes = plt.subplots(2, 3, figsize=(18, 10))
     axes = axes.flatten()
