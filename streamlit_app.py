@@ -186,11 +186,18 @@ if start_training:
 
     # Saved Models download buttons
     st.write("Download Models:")
+
+    # Create a BytesIO stream for the ExtraTreesClassifier model
+    model_io = io.BytesIO()
+    joblib.dump(clf, model_io)  # Serialize the model to the BytesIO object
+    model_io.seek(0)  # Rewind the BytesIO object to the beginning so it can be read
+
+    # Provide the download button for the ExtraTreesClassifier model
     st.download_button(
-        label="Download ExtraTreesClassifier Model",
-        data=joblib.dump(clf, "ExtraTreesClassifier.pkl"),
-        file_name="ExtraTreesClassifier.pkl",
-        mime="application/octet-stream"
+    label="Download ExtraTreesClassifier Model",
+    data=model_io,
+    file_name="ExtraTreesClassifier.pkl",
+    mime="application/octet-stream"
     )
 
     # Confusion Matrices
