@@ -264,7 +264,7 @@ if start_training:
                 saved_models.append([model_name, accuracy, metrics])
         
         # Create DataFrame for display
-        saved_models_df = pd.DataFrame(saved_models, columns=["Model", "Accuracy", "Metrics"])
+        saved_models_df = pd.DataFrame(saved_models, columns=["Model", "Accuracy"])
         
         if not saved_models_df.empty:
             st.dataframe(saved_models_df)
