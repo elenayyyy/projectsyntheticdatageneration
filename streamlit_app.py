@@ -63,33 +63,35 @@ test_size = st.sidebar.slider("Test Size (%)", min_value=10, max_value=50, value
 train_size = 1 - test_size
 st.sidebar.write(f"Test: {test_size * 100}% / Train: {train_size * 100}%")
 
-# Button for Training the Model
-start_training = st.sidebar.button("Generate Data and Train Models")
-
 # Check if the training button is clicked
 if start_training:
-    # Start generating data and training the model
-    X = data[features]
-    y = data['Class']
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
+    # Show a spinner while the model is being trained
+    with st.spinner("Training model... Please wait!"):
+        # Start generating data and training the model
+        X = data[features]
+        y = data['Class']
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X)
 
-    # Train/Test Split
-    X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=test_size, random_state=42)
+        # Train/Test Split
+        X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=test_size, random_state=42)
 
-    # Train a Random Forest Model
-    clf = ExtraTreesClassifier(random_state=42)
-    start_time = time()
-    clf.fit(X_train, y_train)
-    training_time = time() - start_time
+        # Train a Random Forest Model
+        clf = ExtraTreesClassifier(random_state=42)
+        start_time = time()
+        clf.fit(X_train, y_train)
+        training_time = time() - start_time
 
-    # Model Evaluation
-    y_pred = clf.predict(X_test)
-    accuracy = accuracy_score(y_test, y_pred)
-    report = classification_report(y_test, y_pred, output_dict=True)
+        # Model Evaluation
+        y_pred = clf.predict(X_test)
+        accuracy = accuracy_score(y_test, y_pred)
+        report = classification_report(y_test, y_pred, output_dict=True)
 
-    # Set the flag to show the dataset and output
-    display_data = True
+        # Set the flag to show the dataset and output
+        display_data = True
+
+    # Once the spinner is done, show the results
+    st.success("Model training completed!")
 
     # Show Results
     st.write("### Dataset Split Information")
@@ -106,6 +108,7 @@ if start_training:
     st.dataframe(data.head())
     st.write("**Scaled Data (using best model's scaler):**")
     st.dataframe(pd.DataFrame(X_scaled[:5], columns=features))
+
 
         # Feature Visualization
     st.write("### Feature Visualization")
