@@ -113,10 +113,12 @@ if start_training:
         training_time = time() - start_time
 
         # Model Evaluation
-        y_pred = model.predict(X_test)
+        report = classification_report(y_test, y_pred, output_dict=True)
+        precision = report["macro avg"]["precision"]
+        recall = report["macro avg"]["recall"]
+        f1_score = report["macro avg"]["f1-score"]
         accuracy = accuracy_score(y_test, y_pred)
-        precision, recall, f1_score, _ = classification_report(y_test, y_pred, output_dict=True)["accuracy"], classification_report(y_test, y_pred, output_dict=True)["precision"], classification_report(y_test, y_pred, output_dict=True)["recall"], classification_report(y_test, y_pred, output_dict=True)["f1-score"]
-        
+
         # Store metrics
         model_metrics[model_name] = {
             "Accuracy": accuracy,
