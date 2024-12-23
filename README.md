@@ -5,7 +5,7 @@ Water Quality Testing Application
 
 ## Demo App
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://projectsyntheticdatageneration.streamlit.app/)
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://solarpowersimulator.streamlit.app/)
 
 ## GitHub Codespaces
 
