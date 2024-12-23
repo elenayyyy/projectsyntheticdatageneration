@@ -1,7 +1,5 @@
 # 💧 Water Quality Generation
-```
-⬆️ (Replace above with your app's name)
-```
+
 
 Water Quality Testing Application
 
